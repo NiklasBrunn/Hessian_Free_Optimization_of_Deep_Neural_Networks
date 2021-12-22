@@ -12,7 +12,7 @@ data_size = 10000
 batch_size = 100
 epochs = 10
 act = 'relu'
-layer_dims = [1, 100, 100, 1]
+layer_dims = [1, 10, 10, 1]
 
 ###################
 #  generating data:
@@ -42,24 +42,22 @@ def model_loss(x, x_predicted):
 #################
 #  generating NN:
 #################
-#input_layer = tf.keras.Input(shape=(layer_dims[0],))
-#for j, i in enumerate(layer_dims[1:]):
-#    if j == 0:
-#        dense_layer = tf.keras.layers.Dense(
-#            i, activation=act, name='layer_{}'.format(j+1))(input_layer)
-#
-#    elif j == len(layer_dims)-1:
-#        dense_layer = tf.keras.layers.Dense(
-#            i, name='layer_{}'.format(j+1))(dense_layer)
-#
-#    else:
-#        dense_layer = tf.keras.layers.Dense(
-#            i, activation=act, name='layer_{}'.format(j+1))(dense_layer)
+input_layer = tf.keras.Input(shape=(layer_dims[0],), name='layer_{}'.format(0))
+for j, i in enumerate(layer_dims[1:]):
+    if j == 0:
+        dense_layer = tf.keras.layers.Dense(
+            i, activation=act, name='layer_{}'.format(j+1))(input_layer)
+    elif j == len(layer_dims)-1:
+        dense_layer = tf.keras.layers.Dense(
+            i, name='layer_{}'.format(j+1))(dense_layer)
+    else:
+        dense_layer = tf.keras.layers.Dense(
+            i, activation=act, name='layer_{}'.format(j+1))(dense_layer)
 
-input_layer = tf.keras.Input(shape=(1,))
-dense_layer = tf.keras.layers.Dense(100, activation=act)(input_layer)
-dense_layer = tf.keras.layers.Dense(100, activation=act)(dense_layer)
-dense_layer = tf.keras.layers.Dense(1)(dense_layer)
+#input_layer = tf.keras.Input(shape=(1,))
+#dense_layer = tf.keras.layers.Dense(100, activation=act)(input_layer)
+#dense_layer = tf.keras.layers.Dense(100, activation=act)(dense_layer)
+#dense_layer = tf.keras.layers.Dense(1)(dense_layer)
 
 model = tf.keras.Model(input_layer, dense_layer, name='Model')
 model.summary()
