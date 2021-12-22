@@ -56,10 +56,16 @@ def model_loss(x, x_predicted):
 #        dense_layer = tf.keras.layers.Dense(
 #            i, activation=act, name='layer_{}'.format(j+1))(dense_layer)
 
+input_layer = tf.keras.Input(shape=(1,))
+dense_layer = tf.keras.layers.Dense(100, activation=act)(input_layer)
+dense_layer = tf.keras.layers.Dense(100, activation=act)(dense_layer)
+dense_layer = tf.keras.layers.Dense(1)(dense_layer)
 
 model = tf.keras.Model(input_layer, dense_layer, name='Model')
 model.summary()
 model.compile(optimizer='adam', loss=model_loss)
+
+
 
 ###############
 #  training NN:
