@@ -12,7 +12,7 @@ data_size = 10000
 batch_size = 100
 epochs = 10
 act = 'relu'
-layer_dims = [1, 10, 10, 1]
+layer_dims = [1, 100, 100, 1]
 
 ###################
 #  generating data:
