@@ -15,14 +15,14 @@ model_neurons = [1, 25, 25, 1]
 eta = 0.01
 
 
-def toy_data_generator(size):
+def toy_data_generator(size, noise):
     x = tf.random.normal([size, model_neurons[0]])
-    y = x ** 2 + 0.1 * tf.random.normal([size, model_neurons[0]])
+    y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
     return x, y
 
 
-x_train, y_train = toy_data_generator(train_size)
-x_test, y_test = toy_data_generator(test_size)
+x_train, y_train = toy_data_generator(train_size, 0.1)
+x_test, y_test = toy_data_generator(test_size, 0)
 
 
 def model_loss(y_true, y_pred):
