@@ -6,13 +6,15 @@ import tensorflow as tf
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
+# To Do: Andere Lossfunktionen, variable Aktivierungsfunktionen
+# Fast Matrix-Vector Produkt?
+# CG-Verfahren? Wie? Abbruchbedingungen bzw. klappt nicht? Tikhonov damping vs Lernrate?
 
-train_size = 1000
+train_size = 1500
 test_size = 500
 batch_size = 100
-epochs = 20
-model_neurons = [1, 25, 25, 1]
-eta = 0.01
+epochs = 25
+model_neurons = [1, 20, 20, 1]
 
 
 def toy_data_generator(size, noise):
@@ -43,10 +45,10 @@ layer_shape = [(model_neurons[i], model_neurons[i+1]) for i in range(np.shape(mo
 bias_shape = [(model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
 param_shape = [x for y in zip(layer_shape, bias_shape) for x in y]
 n_params = [np.prod(s) for s in param_shape]
-eye_eps = [tf.eye(n_params[i]) * 1e-5 for i in range(len(n_params))]
+lam = np.ones(np.shape(n_params))
 
 
-def train_step_generalized_gauss_newton(x, y):
+def train_step_generalized_gauss_newton(x, y, lam):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model(x)
         loss = model_loss(y, y_pred)
@@ -63,15 +65,79 @@ def train_step_generalized_gauss_newton(x, y):
     G = [tf.constant(1/batch_size)*tf.reduce_sum(tf.constant(np.matmul(j_T, j)), axis=0)
          for (j_T, j) in zip(jac_T, jac)]
 
-    update = [tf.constant(eta * np.linalg.solve(G[i] + eye_eps[i], grad[i]))
+    eye_lam = [tf.eye(n_params[i]) * lam[i] for i in range(len(n_params))]
+
+    update = [tf.constant(np.linalg.solve(G[i] + eye_lam[i], grad[i]))
               for i in range(len(G))]
 
-    update = [tf.reshape(u, s) for u, s in zip(update, param_shape)]
+    theta_new = [p - tf.reshape(u, s) for (p, u, s) in zip(theta, update, param_shape)]
 
-    model.set_weights([p - u for (p, u) in zip(theta, update)])
+    model.set_weights(theta_new)
+
+    impr = loss - model_loss(y,  model(x))
+    rho = np.array([impr/(tf.reduce_sum(g * u) + tf.reduce_sum(u * tf.linalg.matmul(G_mat, u)))
+                    for (G_mat, g, u) in zip(G, grad, update)])
+
+    lam = np.where(rho > 0.75, lam/1.5, lam)
+    lam = np.where(rho < 0.25, lam*1.5, lam)
+
+    return lam
 
 
-def train_step_gradient_descent(x, y):
+def train_step_generalized_gauss_newton_cg(x, y, lam):
+    with tf.GradientTape(persistent=True) as tape:
+        y_pred = model(x)
+        loss = model_loss(y, y_pred)
+
+    theta = model.trainable_variables
+    grad = tape.gradient(loss, theta)
+    jac = tape.jacobian(y_pred, theta)
+
+    grad = [tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad)]
+    jac = [tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
+           for i, h in enumerate(jac)]
+    jac_T = [tf.transpose(j, perm=[0, 2, 1]) for j in jac]
+
+    G = [tf.constant(1/batch_size)*tf.reduce_sum(tf.constant(np.matmul(j_T, j)), axis=0)
+         for (j_T, j) in zip(jac_T, jac)]
+
+#    eye_lam = [tf.eye(n_params[i]) * lam[i] for i in range(len(n_params))]
+    eye_lam = [tf.eye(n_params[i]) * 1e-5 for i in range(len(n_params))]
+
+    update = []
+    for i in range(len(G)):
+        x = tf.zeros([n_params[i]])
+        r = tf.squeeze(grad[i]) - tf.linalg.matvec(G[i] + eye_lam[i], x)
+        d = r
+        k = 0
+        while tf.math.reduce_euclidean_norm(r) > 1e-10 and k < 100:
+            z = tf.linalg.matvec(G[i] + eye_lam[i], d)
+            alpha = tf.tensordot(r, r, 1) / tf.tensordot(d, z, 1)
+            x = x + alpha * d
+            r_new = r - alpha * z
+            beta = tf.tensordot(r_new, r_new, 1) / tf.tensordot(r, r, 1)
+            d = r_new + beta * d
+            r = r_new
+            k += 1
+
+        update.append(tf.reshape(x*0.01, [n_params[i], 1]))
+#        update.append(tf.reshape(x, [n_params[i], 1]))
+
+    theta_new = [p - tf.reshape(u, s) for (p, u, s) in zip(theta, update, param_shape)]
+
+    model.set_weights(theta_new)
+
+#    impr = loss - model_loss(y,  model(x))
+#    rho = np.array([impr/(tf.reduce_sum(g * u) + tf.reduce_sum(u * tf.linalg.matmul(G_mat, u)))
+#                    for (G_mat, g, u) in zip(G, grad, update)])
+
+#    lam = np.where(rho > 0.75, lam/1.5, lam)
+#    lam = np.where(rho < 0.25, lam*1.5, lam)
+
+    return lam
+
+
+def train_step_gradient_descent(x, y, eta):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model(x)
         loss = model_loss(y, y_pred)
@@ -97,12 +163,12 @@ for epoch in range(epochs):
         start = i * batch_size
         end = start + batch_size
 
-        train_step_generalized_gauss_newton(x_train[start:end], y_train[start:end])
-
+        lam = train_step_generalized_gauss_newton_cg(x_train[start: end], y_train[start: end], lam)
+    #    train_step_gradient_descent(x_train[start: end], y_train[start: end], 0.3)
 
 f, ax = plt.subplots(1, 1, figsize=(6, 4))
 
-a = np.linspace(-4, 4, 200)
+a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
 x = model.predict(a)
 
 ax.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
@@ -110,5 +176,11 @@ ax.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
 ax.plot(a, a**2, label='Ground Truth', c='green')
 ax.plot(a, x, label='Prediction', c='blue')
 
+ax.set_ylim(-0.6, 10)
+ax.set_xlim(-np.sqrt(10), np.sqrt(10))
+
 ax.legend(loc='upper left')
 plt.show()
+
+
+# https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
