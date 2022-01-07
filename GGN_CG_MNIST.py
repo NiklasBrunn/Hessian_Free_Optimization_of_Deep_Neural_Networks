@@ -15,23 +15,31 @@ tf.get_logger().setLevel(logging.ERROR)
 tf.random.set_seed(1)
 
 batch_size = 100
-epochs = 20
+epochs = 2
 model_neurons_mnist = [784, 392, 98, 10]
 
 
 def mnist_data_generator():
     (train_x, train_y), (test_x, test_y) = mnist.load_data()
-    train_x = tf.reshape(train_x, [60000, 784])
-    test_x = tf.reshape(test_x, [10000, 784])
+    train_x = tf.reshape(train_x, [60000, 784])/255
+    test_x = tf.reshape(test_x, [10000, 784])/255
     train_y = tf.one_hot(train_y, depth = 10)
     test_y = tf.one_hot(test_y, depth = 10)
     return (train_x, train_y), (test_x, test_y)
 
 (train_x, train_y), (test_x, test_y) = mnist_data_generator()
+#print(train_x[1, :])
 
 def model_loss_mnist(y_true, y_pred):
-    return tf.reduce_mean(tf.keras.losses.binary_crossentropy(y_true, tf.nn.softmax(y_pred, axis=1)))
+    return -tf.reduce_mean(tf.math.reduce_sum(tf.math.multiply(y_true, tf.math.log(tf.nn.softmax(y_pred))), axis=0))
 
+#print(test_y[1:3, :])
+#print(tf.nn.softmax(test_y[1:3, :]))
+#print(tf.math.log(tf.nn.softmax(test_y[1:3, :])))
+#print(tf.math.multiply(test_y[1:3, :], tf.math.log(tf.nn.softmax(test_y[1:3, :]))))
+#print(tf.math.reduce_sum(tf.math.multiply(test_y[1:3, :], tf.math.log(tf.nn.softmax(test_y[1:3, :]))), axis=0))
+#print(-tf.reduce_mean(tf.math.reduce_sum(tf.math.multiply(test_y[1:3, :], tf.math.log(tf.nn.softmax(test_y[1:3, :]))), axis=0)))
+#print(model_loss_mnist(test_y[1:3, :], test_y[1:3, :]))
 
 input_layer_mnist = tf.keras.Input(shape=(model_neurons_mnist[0]))
 layer_1_mnist = tf.keras.layers.Dense(model_neurons_mnist[1], activation='relu')(input_layer_mnist)
@@ -43,6 +51,12 @@ model_mnist = tf.keras.Model(input_layer_mnist, layer_3_mnist, name='Model')
 model_mnist.compile(loss=model_loss_mnist)
 model_mnist.summary()
 
+#print(tf.shape(test_y[1:3,:]))
+#print(tf.shape(model_mnist.predict(test_x[1:3,:])))
+#print(model_mnist.predict(test_x[1:3,:]))
+#print(tf.nn.softmax(model_mnist.predict(test_x[1:3,:])))
+#print(tf.math.log(tf.nn.softmax(model_mnist.predict(test_x[1:3,:]))))
+print(model_loss_mnist(test_y[0:9999, :], model_mnist.predict(test_x[0:9999,:])))
 
 layer_shape = [(model_neurons_mnist[i], model_neurons_mnist[i+1]) for i in range(np.shape(model_neurons_mnist)[0]-1)]
 bias_shape = [(model_neurons_mnist[i+1]) for i in range(np.shape(model_neurons_mnist)[0]-1)]
