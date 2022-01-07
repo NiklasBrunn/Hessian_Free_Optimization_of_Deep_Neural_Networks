@@ -32,6 +32,8 @@ def mnist_data_generator():
 
 def model_loss_mnist(y_true, y_pred):
     return -tf.reduce_mean(tf.math.reduce_sum(tf.math.multiply(y_true, tf.math.log(tf.nn.softmax(y_pred))), axis=0))
+#https://fluxml.ai/Flux.jl/v0.12/models/losses/#Flux.Losses.logitcrossentropy
+
 
 #print(test_y[1:3, :])
 #print(tf.nn.softmax(test_y[1:3, :]))
