@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import tensorflow as tf
 import time
+from keras.datasets import mnist
 
 import logging
 tf.get_logger().setLevel(logging.ERROR)
@@ -15,12 +16,10 @@ batch_size = 100
 epochs = 20
 model_neurons = [1, 30, 30, 1]
 
-
 def toy_data_generator(size, noise):
     x = tf.random.normal([size, model_neurons[0]])
     y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
     return x, y
-
 
 x_train, y_train = toy_data_generator(train_size, 0.1)
 x_test, y_test = toy_data_generator(test_size, 0)
@@ -39,6 +38,7 @@ model = tf.keras.Model(input_layer, layer_3, name='Model')
 
 model.compile(loss=model_loss)
 model.summary()
+
 
 layer_shape = [(model_neurons[i], model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
 bias_shape = [(model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
@@ -124,7 +124,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
     grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
 
-    update = preconditioned_cg_method(jac, tf.zeros(jac.shape[2]), grad_obj, 5, 0.0005)
+    update = preconditioned_cg_method(jac, update_old, grad_obj, 5, 0.0005)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
@@ -143,6 +143,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
         lam *= 1.5
 
     return lam, update
+
 
 
 def train_step_gradient_descent(x, y, eta):
@@ -178,20 +179,20 @@ for epoch in range(epochs):
 elapsed = time.time() - t
 
 
-#f, ax = plt.subplots(1, 1, figsize=(6, 4))
+f, ax = plt.subplots(1, 1, figsize=(6, 4))
 
-#a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
-#x = model.predict(a)
+a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
+x = model.predict(a)
 
-#ax.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
+ax.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
 
-#ax.plot(a, a**2, label='Ground Truth', c='green')
-#ax.plot(a, x, label='Prediction', c='blue')
+ax.plot(a, a**2, label='Ground Truth', c='green')
+ax.plot(a, x, label='Prediction', c='blue')
 
-#ax.set_ylim(-0.6, 10)
-#ax.set_xlim(-np.sqrt(10), np.sqrt(10))
+ax.set_ylim(-0.6, 10)
+ax.set_xlim(-np.sqrt(10), np.sqrt(10))
 
-#ax.legend(loc='upper left')
-# plt.show()
+ax.legend(loc='upper left')
+plt.show()
 
 # https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
