@@ -14,10 +14,9 @@ tf.get_logger().setLevel(logging.ERROR)
 
 tf.random.set_seed(1)
 
-batch_size = 100
+batch_size = 128
 epochs = 2
-model_neurons_mnist = [784, 392, 98, 10]
-
+model_neurons_mnist = [784, 128, 10]
 
 def mnist_data_generator():
     (train_x, train_y), (test_x, test_y) = mnist.load_data()
@@ -28,37 +27,23 @@ def mnist_data_generator():
     return (train_x, train_y), (test_x, test_y)
 
 (train_x, train_y), (test_x, test_y) = mnist_data_generator()
-#print(train_x[1, :])
 
 def model_loss_mnist(y_true, y_pred):
     return -tf.reduce_mean(tf.math.reduce_sum(tf.math.multiply(y_true, tf.math.log(tf.nn.softmax(y_pred))), axis=0))
 #https://fluxml.ai/Flux.jl/v0.12/models/losses/#Flux.Losses.logitcrossentropy
 
 
-#print(test_y[1:3, :])
-#print(tf.nn.softmax(test_y[1:3, :]))
-#print(tf.math.log(tf.nn.softmax(test_y[1:3, :])))
-#print(tf.math.multiply(test_y[1:3, :], tf.math.log(tf.nn.softmax(test_y[1:3, :]))))
-#print(tf.math.reduce_sum(tf.math.multiply(test_y[1:3, :], tf.math.log(tf.nn.softmax(test_y[1:3, :]))), axis=0))
-#print(-tf.reduce_mean(tf.math.reduce_sum(tf.math.multiply(test_y[1:3, :], tf.math.log(tf.nn.softmax(test_y[1:3, :]))), axis=0)))
-#print(model_loss_mnist(test_y[1:3, :], test_y[1:3, :]))
-
 input_layer_mnist = tf.keras.Input(shape=(model_neurons_mnist[0]))
-layer_1_mnist = tf.keras.layers.Dense(model_neurons_mnist[1], activation='relu')(input_layer_mnist)
-layer_2_mnist = tf.keras.layers.Dense(model_neurons_mnist[2], activation='relu')(layer_1_mnist)
-layer_3_mnist = tf.keras.layers.Dense(model_neurons_mnist[3])(layer_2_mnist)
+layer_1_mnist = tf.keras.layers.Dense(model_neurons_mnist[1], activation='sigmoid')(input_layer_mnist)
+layer_2_mnist = tf.keras.layers.Dense(model_neurons_mnist[2])(layer_1_mnist)
 
-model_mnist = tf.keras.Model(input_layer_mnist, layer_3_mnist, name='Model')
+model_mnist = tf.keras.Model(input_layer_mnist, layer_2_mnist, name='Model')
 
 model_mnist.compile(loss=model_loss_mnist)
 model_mnist.summary()
 
-#print(tf.shape(test_y[1:3,:]))
-#print(tf.shape(model_mnist.predict(test_x[1:3,:])))
-#print(model_mnist.predict(test_x[1:3,:]))
-#print(tf.nn.softmax(model_mnist.predict(test_x[1:3,:])))
-#print(tf.math.log(tf.nn.softmax(model_mnist.predict(test_x[1:3,:]))))
-print(model_loss_mnist(test_y[0:9999, :], model_mnist.predict(test_x[0:9999,:])))
+#print(tf.nn.softmax(model_mnist.predict(train_x[1:4,:])))
+#print(model_mnist.predict(train_x[1:4,:]))
 
 layer_shape = [(model_neurons_mnist[i], model_neurons_mnist[i+1]) for i in range(np.shape(model_neurons_mnist)[0]-1)]
 bias_shape = [(model_neurons_mnist[i+1]) for i in range(np.shape(model_neurons_mnist)[0]-1)]
@@ -69,19 +54,20 @@ update_old = tf.zeros(ind[-1])
 lam = 1
 
 
-def fastmatvec(v, jac, lam):
-    return tf.reduce_mean(tf.linalg.matvec(jac, tf.linalg.matvec(jac, v), transpose_a=True), axis=0) + lam * v
+def fastmatvec(v, jac_net, jac_softmax, lam):
+    return tf.reduce_mean(tf.linalg.matvec(jac_net, tf.linalg.matvec(jac_softmax, tf.linalg.matvec(jac_net, v)), transpose_a=True), axis=0) + lam * v
+    #return tf.reduce_mean(tf.linalg.matvec(jac_net, tf.linalg.matvec(jac_net, v), transpose_a=True), axis=0) + lam * v
 
 
-def cg_method(jac, x, b, min_steps, precision):  # Martens Werte: min_steps = 10, precision = 0.0005
-    r = b - fastmatvec(x, jac, lam)
+def cg_method(jac_net, jac_softmax, x, b, min_steps, precision):  # Martens Werte: min_steps = 10, precision = 0.0005
+    r = b - fastmatvec(x, jac_net, jac_softmax, lam)
     d = r
     i, k = 0, min_steps
     # Wie geht das schneller????
     phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
     while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
         k = np.maximum(min_steps, int(i/min_steps))
-        z = fastmatvec(d, jac, lam)
+        z = fastmatvec(d, jac_net, jac_softmax, lam)
         alpha = tf.tensordot(r, r, 1) / tf.tensordot(d, z, 1)
         x = x + alpha * d
         r_new = r - alpha * z
@@ -99,8 +85,8 @@ def cg_method(jac, x, b, min_steps, precision):  # Martens Werte: min_steps = 10
 
 
 # Martens Werte: min_steps = 10, precision = 0.0005
-def preconditioned_cg_method(A, x, b, min_steps, precision):
-    r = b - fastmatvec(x, A, lam)
+def preconditioned_cg_method(A, B, x, b, min_steps, precision):
+    r = b - fastmatvec(x, A, B, lam)
     y = r / (b ** 2 + lam)
     d = y
     i, k = 0, min_steps
@@ -108,7 +94,7 @@ def preconditioned_cg_method(A, x, b, min_steps, precision):
     phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
     while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
         k = np.maximum(min_steps, int(i/min_steps))
-        z = fastmatvec(d, A, lam)
+        z = fastmatvec(d, A, B, lam)
         alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
         x = x + alpha * d
         r_new = r - alpha * z
@@ -128,23 +114,32 @@ def preconditioned_cg_method(A, x, b, min_steps, precision):
     return x
 
 
+
 def train_step_generalized_gauss_newton(x, y, lam, update_old):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model_mnist(x)
+        y_pred_mean = tf.math.reduce_sum(model_mnist(x), axis=0)
+        akt_out = tf.nn.softmax(y_pred_mean)
         loss = model_loss_mnist(y, y_pred)
 
     res = y_pred - y
-    if model_neurons_mnist[0] == 1:
-        res = tf.reshape(res, (batch_size, 1, 1))
+    res = tf.reshape(res, (batch_size, 10, 1))
 
     theta = model_mnist.trainable_variables
+    jac_softmax = tape.jacobian(akt_out, y_pred_mean)
+
     jac = tape.jacobian(y_pred, theta)
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons_mnist[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
 
-    grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
+    jac_net = tf.reduce_mean(jac, axis=0)
 
-    update = preconditioned_cg_method(jac, update_old, grad_obj, 5, 0.0005)
+    #grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
+    grad_obj = tf.squeeze(tf.reduce_mean([tf.matmul(tf.transpose(jac, perm=[0,2,1])[i,:,:],res[i,:,:]) for i in range(batch_size)], axis=0)) #braucht tuuuuurbo lange zum berechnen :O
+    print('grad der obj.-fkt. berechnet')
+    #update = preconditioned_cg_method(jac_net, jac_softmax, update_old, grad_obj, 5, 0.0005)
+    update = cg_method(jac_net, jac_softmax, update_old, grad_obj, 5, 0.0005)
+    print('cg-update done')
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
@@ -193,8 +188,8 @@ for epoch in range(epochs):
         start = i * batch_size
         end = start + batch_size
 
-#        lam, update_old = train_step_generalized_gauss_newton(
-#            train_x[start: end], train_y[start: end], lam, update_old)
-        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.3)
+        lam, update_old = train_step_generalized_gauss_newton(
+            train_x[start: end], train_y[start: end], lam, update_old)
+#        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.3)
 
 elapsed = time.time() - t

@@ -111,16 +111,17 @@ def preconditioned_cg_method(A, x, b, min_steps, precision):
 def train_step_generalized_gauss_newton(x, y, lam, update_old):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model(x)
-        loss = model_loss(y, y_pred)
+        loss = model_loss(y, y_pred) #hier loss nicht mitteln?
 
     res = y_pred - y
     if model_neurons[0] == 1:
         res = tf.reshape(res, (batch_size, 1, 1))
 
     theta = model.trainable_variables
-    jac = tape.jacobian(y_pred, theta)
+    jac = tape.jacobian(y_pred, theta) #hier nicht auch das Mittel von y_pred als input?
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
+    print(jac)
 
     grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
 
