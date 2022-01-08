@@ -121,7 +121,6 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     jac = tape.jacobian(y_pred, theta) #hier nicht auch das Mittel von y_pred als input?
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
-    print(jac)
 
     grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
 
