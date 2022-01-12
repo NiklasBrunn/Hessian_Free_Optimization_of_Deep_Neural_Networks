@@ -14,8 +14,9 @@ tf.get_logger().setLevel(logging.ERROR)
 
 tf.random.set_seed(11)
 
+data_size = 1280
 batch_size = 128
-epochs = 25
+epochs = 5
 model_neurons_mnist = [784, 800, 10]
 
 def mnist_data_generator():
@@ -24,7 +25,7 @@ def mnist_data_generator():
     test_x = tf.reshape(test_x, [10000, 784])/255
     train_y = tf.one_hot(train_y, depth = 10)
     test_y = tf.one_hot(test_y, depth = 10)
-    return (train_x, train_y), (test_x, test_y)
+    return (train_x[0:data_size, :], train_y[0:data_size, :]), (test_x[0:data_size, :], test_y[0:data_size, :])
 
 (train_x, train_y), (test_x, test_y) = mnist_data_generator()
 
@@ -56,19 +57,21 @@ lam = 1
 
 
 def fastmatvec(v, jac_net, jac_softmax, lam):
-    return tf.reduce_mean(tf.linalg.matvec(jac_net, tf.linalg.matvec(jac_softmax, tf.linalg.matvec(jac_net, v)), transpose_a=True), axis=0) + lam * v
-    #return tf.reduce_mean(tf.linalg.matvec(jac_net, tf.linalg.matvec(jac_net, v), transpose_a=True), axis=0) + lam * v
+    prod1 = tf.linalg.matvec(jac_net, v)
+    prod2 = tf.linalg.matvec(jac_softmax, prod1)
+    prod3 = tf.linalg.matvec(jac_net, prod2, transpose_a=True)
+    return tf.reduce_mean(prod3, axis=0) + lam * v
 
 
-def cg_method(jac_net, jac_softmax, x, b, min_steps, precision):  # Martens Werte: min_steps = 10, precision = 0.0005
-    r = b - fastmatvec(x, jac_net, jac_softmax, lam)
+def cg_method(jac, jac_softmax, x, b, min_steps, precision):  # Martens Werte: min_steps = 10, precision = 0.0005
+    r = b - fastmatvec(x, jac, jac_softmax, lam)
     d = r
     i, k = 0, min_steps
-    # Wie geht das schneller????
     phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
     while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
+        print(i)
         k = np.maximum(min_steps, int(i/min_steps))
-        z = fastmatvec(d, jac_net, jac_softmax, lam)
+        z = fastmatvec(d, jac, jac_softmax, lam)
         alpha = tf.tensordot(r, r, 1) / tf.tensordot(d, z, 1)
         x = x + alpha * d
         r_new = r - alpha * z
@@ -91,7 +94,6 @@ def preconditioned_cg_method(A, B, x, b, min_steps, precision):
     y = r / (b ** 2 + lam)
     d = y
     i, k = 0, min_steps
-    # Wie geht das schneller????
     phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
     while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
         k = np.maximum(min_steps, int(i/min_steps))
@@ -111,7 +113,6 @@ def preconditioned_cg_method(A, B, x, b, min_steps, precision):
         else:
             s = k
         i += 1
-
     return x
 
 
@@ -119,28 +120,35 @@ def preconditioned_cg_method(A, B, x, b, min_steps, precision):
 def train_step_generalized_gauss_newton(x, y, lam, update_old):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model_mnist(x)
-        y_pred_mean = tf.math.reduce_sum(model_mnist(x), axis=0)
-        akt_out = tf.nn.softmax(y_pred_mean)
+        #y_pred_mean = tf.math.reduce_sum(model_mnist(x), axis=0)
+        #akt_out = tf.nn.softmax(y_pred_mean)
+        akt_out = tf.nn.softmax(y_pred)
         loss = model_loss_mnist(y, y_pred)
 
-    res = y_pred - y
-    res = tf.reshape(res, (batch_size, 10, 1))
+    #res = y_pred - y
+    #if model_neurons[0] == 1:
+    #    res = tf.reshape(res, (batch_size, 1, 1))
+    #res = tf.reshape(res, (batch_size, 10, 1))
 
     theta = model_mnist.trainable_variables
-    jac_softmax = tape.jacobian(akt_out, y_pred_mean)
+
+    jac_softmax = tape.batch_jacobian(akt_out, y_pred)
+
 
     jac = tape.jacobian(y_pred, theta)
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons_mnist[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
 
-    jac_net = tf.reduce_mean(jac, axis=0)
+    grad_obj = tape.gradient(loss, theta)
+    grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
+
+    #jac_net = tf.reduce_mean(jac, axis=0)
 
     #grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
-    grad_obj = tf.squeeze(tf.reduce_mean([tf.matmul(tf.transpose(jac, perm=[0,2,1])[i,:,:],res[i,:,:]) for i in range(batch_size)], axis=0)) #braucht tuuuuurbo lange zum berechnen :O
-    print('grad der obj.-fkt. berechnet')
+    #grad_obj = tf.squeeze(tf.reduce_mean([tf.matmul(tf.transpose(jac, perm=[0,2,1])[i,:,:],res[i,:,:]) for i in range(batch_size)], axis=0)) #braucht tuuuuurbo lange zum berechnen :O
+
     #update = preconditioned_cg_method(jac_net, jac_softmax, update_old, grad_obj, 5, 0.0005)
-    update = cg_method(jac_net, jac_softmax, update_old, grad_obj, 5, 0.0005)
-    print('cg-update done')
+    update = preconditioned_cg_method(jac, jac_softmax, update_old, grad_obj, 5, 0.0005)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
@@ -151,7 +159,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     impr = loss - model_loss_mnist(y,  model_mnist(x))
 
     rho = impr / (tf.tensordot(grad_obj, update, 1) +
-                  tf.tensordot(update, fastmatvec(update, jac, 0), 1))
+                  tf.tensordot(update, fastmatvec(update, jac, jac_softmax, 0), 1))
 
     if rho > 0.75:
         lam /= 1.5
@@ -175,25 +183,25 @@ def train_step_gradient_descent(x, y, eta):
     model_mnist.set_weights([p - u for (p, u) in zip(theta, update)])
 
 
-num_updates = int(60000 / batch_size)
+num_updates = int(data_size / batch_size)
 
 
-t = time.time()
+#t = time.time()
 for epoch in range(epochs):
-    test_loss = np.array(model_loss_mnist(test_y, model_mnist.predict(test_x)))
-    print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
-                                                               1).zfill(len(str(epochs))), epochs, test_loss))
-
     for i in range(num_updates):
+        test_loss = np.array(model_loss_mnist(test_y, model_mnist.predict(test_x)))
+        print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
+                                                                   1).zfill(len(str(epochs))), epochs, test_loss))
+
 
         start = i * batch_size
         end = start + batch_size
 
-#        lam, update_old = train_step_generalized_gauss_newton(
-#            train_x[start: end], train_y[start: end], lam, update_old)
-        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.01)
+        lam, update_old = train_step_generalized_gauss_newton(
+            train_x[start: end], train_y[start: end], lam, update_old)
+#        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.1)
 
-elapsed = time.time() - t
+#elapsed = time.time() - t
 
 #print(np.argmax(model_mnist.predict(test_x[100:150, :]), axis=1))
 print('falsch klassifizierte Test-MNIST-Zahlen:', np.sum(np.where(np.argmax(test_y, axis=1) - np.argmax(model_mnist.predict(test_x), axis=1) !=0, 1, 0)))
