@@ -80,7 +80,7 @@ def cg_method(jac, x, b, min_steps, precision):  # Martens Werte: min_steps = 10
 
 # Martens Werte: min_steps = 10, precision = 0.0005
 def preconditioned_cg_method(A, x, b, min_steps, precision):
-    r = b - fastmatvec(x, A, lam)
+    r = b - fastmatvec(x, A, lam) # (A+lam*I) * x
     y = r / (b ** 2 + lam)
     d = y
     i, k = 0, min_steps
@@ -109,7 +109,7 @@ def preconditioned_cg_method(A, x, b, min_steps, precision):
 
 
 def train_step_generalized_gauss_newton(x, y, lam, update_old):
-    with tf.GradientTape(persistent=True) as tape:
+    with tf.GradientTape() as tape:
         y_pred = model(x)
         loss = model_loss(y, y_pred) #hier loss nicht mitteln?
 
