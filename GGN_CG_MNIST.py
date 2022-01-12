@@ -12,11 +12,11 @@ from keras.datasets import mnist
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
-tf.random.set_seed(1)
+tf.random.set_seed(11)
 
 batch_size = 128
-epochs = 2
-model_neurons_mnist = [784, 128, 10]
+epochs = 25
+model_neurons_mnist = [784, 800, 10]
 
 def mnist_data_generator():
     (train_x, train_y), (test_x, test_y) = mnist.load_data()
@@ -28,13 +28,16 @@ def mnist_data_generator():
 
 (train_x, train_y), (test_x, test_y) = mnist_data_generator()
 
+
 def model_loss_mnist(y_true, y_pred):
-    return -tf.reduce_mean(tf.math.reduce_sum(tf.math.multiply(y_true, tf.math.log(tf.nn.softmax(y_pred))), axis=0))
+    #return tf.reduce_mean(-tf.math.reduce_sum(y_true * tf.math.log(tf.nn.softmax(y_pred)), axis=0)) #Loss hiermit viel besser, obwohl so nicht gedacht?!?
+    #return tf.reduce_mean(-tf.math.reduce_sum(y_true * tf.math.log(tf.nn.softmax(y_pred)), axis=1))
+    return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_true, y_pred))
+
 #https://fluxml.ai/Flux.jl/v0.12/models/losses/#Flux.Losses.logitcrossentropy
 
-
 input_layer_mnist = tf.keras.Input(shape=(model_neurons_mnist[0]))
-layer_1_mnist = tf.keras.layers.Dense(model_neurons_mnist[1], activation='sigmoid')(input_layer_mnist)
+layer_1_mnist = tf.keras.layers.Dense(model_neurons_mnist[1], activation='relu')(input_layer_mnist)
 layer_2_mnist = tf.keras.layers.Dense(model_neurons_mnist[2])(layer_1_mnist)
 
 model_mnist = tf.keras.Model(input_layer_mnist, layer_2_mnist, name='Model')
@@ -42,8 +45,6 @@ model_mnist = tf.keras.Model(input_layer_mnist, layer_2_mnist, name='Model')
 model_mnist.compile(loss=model_loss_mnist)
 model_mnist.summary()
 
-#print(tf.nn.softmax(model_mnist.predict(train_x[1:4,:])))
-#print(model_mnist.predict(train_x[1:4,:]))
 
 layer_shape = [(model_neurons_mnist[i], model_neurons_mnist[i+1]) for i in range(np.shape(model_neurons_mnist)[0]-1)]
 bias_shape = [(model_neurons_mnist[i+1]) for i in range(np.shape(model_neurons_mnist)[0]-1)]
@@ -179,7 +180,7 @@ num_updates = int(60000 / batch_size)
 
 t = time.time()
 for epoch in range(epochs):
-    test_loss = model_loss_mnist(test_y, model_mnist.predict(test_x))
+    test_loss = np.array(model_loss_mnist(test_y, model_mnist.predict(test_x)))
     print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, test_loss))
 
@@ -188,8 +189,11 @@ for epoch in range(epochs):
         start = i * batch_size
         end = start + batch_size
 
-        lam, update_old = train_step_generalized_gauss_newton(
-            train_x[start: end], train_y[start: end], lam, update_old)
-#        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.3)
+#        lam, update_old = train_step_generalized_gauss_newton(
+#            train_x[start: end], train_y[start: end], lam, update_old)
+        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.01)
 
 elapsed = time.time() - t
+
+#print(np.argmax(model_mnist.predict(test_x[100:150, :]), axis=1))
+print('falsch klassifizierte Test-MNIST-Zahlen:', np.sum(np.where(np.argmax(test_y, axis=1) - np.argmax(model_mnist.predict(test_x), axis=1) !=0, 1, 0)))
