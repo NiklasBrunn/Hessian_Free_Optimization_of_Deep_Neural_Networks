@@ -381,6 +381,7 @@ if GN_allowed == True:
 
 ax3.legend(loc='upper right')
 
+plt.show()
 
 
 #################
@@ -396,5 +397,5 @@ https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
 3) CasADi
 4) R-Methode bzw. fastmatvec-Methode implementieren
 5) [optional] optimale Hyperparameter für SGD herausfinden und gegentesten mit
-              optimalen Hyperparametern für GN (z.B. Anzahl Schritte in CG ...) 
+              optimalen Hyperparametern für GN (z.B. Anzahl Schritte in CG ...)
 '''
