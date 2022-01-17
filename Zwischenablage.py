@@ -393,4 +393,26 @@ def train_step_generalized_gauss_newton_cg(x, y, lam):
                 r = r_new
                 k += 1
             return tf.reshape(x, [x.shape[0], 1])
+
+
+
+
+
+
+            ####Approximated_function_plot:
+            f, ax = plt.subplots(1, 1, figsize=(6, 4))
+
+            a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
+            x = model.predict(a)
+
+            ax.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
+
+            ax.plot(a, a**2, label='Ground Truth', c='green')
+            ax.plot(a, x, label='Prediction', c='blue')
+
+            ax.set_ylim(-0.6, 10)
+            ax.set_xlim(-np.sqrt(10), np.sqrt(10))
+
+            ax.legend(loc='upper right')
+            plt.show()
 '''

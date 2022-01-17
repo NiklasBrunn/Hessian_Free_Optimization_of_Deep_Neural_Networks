@@ -14,13 +14,14 @@ tf.get_logger().setLevel(logging.ERROR)
 #Hyperparameter:
 ################
 
-tf.random.set_seed(1)
+Data_Seed = 1
+Model_Seed = 1
 train_size = 1500
 test_size = 500
 batch_size = 100
 epochs = 5
 model_neurons = [1, 30, 30, 1]
-GN_allowed = True
+GN_allowed = True # wenn TRUE, dann wird auch GN-Update nach dem SGD-Update performt!
 
 
 #################
@@ -31,6 +32,8 @@ def toy_data_generator(size, noise):
     x = tf.random.normal([size, model_neurons[0]])
     y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
     return x, y
+
+tf.random.set_seed(Data_Seed)
 
 x_train, y_train = toy_data_generator(train_size, 0.1)
 x_test, y_test = toy_data_generator(test_size, 0)
@@ -44,6 +47,8 @@ x_test, y_test = toy_data_generator(test_size, 0)
 def model_loss(y_true, y_pred):
     return tf.reduce_mean(0.5 * (y_true - y_pred) ** 2)
 
+
+tf.random.set_seed(Model_Seed)
 
 input_layer = tf.keras.Input(shape=(model_neurons[0],))
 layer_1 = tf.keras.layers.Dense(model_neurons[1], activation='relu')(input_layer)
@@ -228,8 +233,40 @@ for epoch in range(epochs):
 #elapsed = time.time() - t
 #print(elapsed)
 
+#Approximated_function_plot:
+f, ax4 = plt.subplots(1, 1, figsize=(6, 4))
+
+a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
+x = model.predict(a)
+
+ax4.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
+
+ax4.plot(a, a**2, label='Ground Truth', c='green')
+ax4.plot(a, x, label='Prediction', c='blue')
+
+ax4.set_ylim(-0.6, 10)
+ax4.set_xlim(-np.sqrt(10), np.sqrt(10))
+ax4.set_title('Prediction SGD_Model')
+
+ax4.legend(loc='upper right')
+
 
 #GN-TRAINING:
+
+# Modellparameter müssen nochmal gelost werden (sind die selben wie oben),
+# damit die Methoden vergleichbar sind!
+tf.random.set_seed(Model_Seed)
+
+input_layer = tf.keras.Input(shape=(model_neurons[0],))
+layer_1 = tf.keras.layers.Dense(model_neurons[1], activation='relu')(input_layer)
+layer_2 = tf.keras.layers.Dense(model_neurons[2], activation='relu')(layer_1)
+layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
+
+model = tf.keras.Model(input_layer, layer_3, name='Model')
+
+model.compile(loss=model_loss)
+model.summary()
+
 #t = time.time()
 test_loss_vec_GN = np.zeros(epochs)
 train_loss_vec_GN = np.zeros(epochs)
@@ -264,6 +301,23 @@ if GN_allowed == True:
             time_vec_GN[epoch] = elapsed
         else:
             time_vec_GN[epoch] = time_vec_GN[epoch - 1] + elapsed
+
+        #Approximated_function_plot:
+        f, ax5 = plt.subplots(1, 1, figsize=(6, 4))
+
+        a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
+        x = model.predict(a)
+
+        ax5.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
+
+        ax5.plot(a, a**2, label='Ground Truth', c='green')
+        ax5.plot(a, x, label='Prediction', c='blue')
+
+        ax5.set_ylim(-0.6, 10)
+        ax5.set_xlim(-np.sqrt(10), np.sqrt(10))
+        ax5.set_title('Prediction GN_Model')
+
+        ax5.legend(loc='upper right')
 
     #print(time_vec_GN)
     #elapsed = time.time() - t
@@ -327,21 +381,20 @@ if GN_allowed == True:
 
 ax3.legend(loc='upper right')
 
-####Approximated_function_plot:
-f, ax = plt.subplots(1, 1, figsize=(6, 4))
 
-a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
-x = model.predict(a)
 
-ax.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
+#################
+#TO-DOs und Link:
+#################
 
-ax.plot(a, a**2, label='Ground Truth', c='green')
-ax.plot(a, x, label='Prediction', c='blue')
+'''
+https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
 
-ax.set_ylim(-0.6, 10)
-ax.set_xlim(-np.sqrt(10), np.sqrt(10))
-
-ax.legend(loc='upper right')
-plt.show()
-
-# https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
+1) Epochen/Time - Plot für die Modelle hinzufügen
+2) Plots sollen gemittelte Werte mit Auswertungen von ca. 5 verschidenen Random-
+   Seeds zeigen
+3) CasADi
+4) R-Methode bzw. fastmatvec-Methode implementieren
+5) [optional] optimale Hyperparameter für SGD herausfinden und gegentesten mit
+              optimalen Hyperparametern für GN (z.B. Anzahl Schritte in CG ...) 
+'''
