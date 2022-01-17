@@ -302,22 +302,22 @@ if GN_allowed == True:
         else:
             time_vec_GN[epoch] = time_vec_GN[epoch - 1] + elapsed
 
-        #Approximated_function_plot:
-        f, ax5 = plt.subplots(1, 1, figsize=(6, 4))
+    #Approximated_function_plot:
+    f, ax5 = plt.subplots(1, 1, figsize=(6, 4))
 
-        a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
-        x = model.predict(a)
+    a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
+    x = model.predict(a)
 
-        ax5.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
+    ax5.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
 
-        ax5.plot(a, a**2, label='Ground Truth', c='green')
-        ax5.plot(a, x, label='Prediction', c='blue')
+    ax5.plot(a, a**2, label='Ground Truth', c='green')
+    ax5.plot(a, x, label='Prediction', c='blue')
 
-        ax5.set_ylim(-0.6, 10)
-        ax5.set_xlim(-np.sqrt(10), np.sqrt(10))
-        ax5.set_title('Prediction GN_Model')
+    ax5.set_ylim(-0.6, 10)
+    ax5.set_xlim(-np.sqrt(10), np.sqrt(10))
+    ax5.set_title('Prediction GN_Model')
 
-        ax5.legend(loc='upper right')
+    ax5.legend(loc='upper right')
 
     #print(time_vec_GN)
     #elapsed = time.time() - t
