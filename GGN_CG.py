@@ -8,14 +8,24 @@ from keras.datasets import mnist
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
-tf.random.set_seed(1)
 
+
+################
+#Hyperparameter:
+################
+
+tf.random.set_seed(1)
 train_size = 1500
 test_size = 500
 batch_size = 100
 epochs = 5
 model_neurons = [1, 30, 30, 1]
 GN_allowed = True
+
+
+#################
+#Data generation:
+#################
 
 def toy_data_generator(size, noise):
     x = tf.random.normal([size, model_neurons[0]])
@@ -25,6 +35,11 @@ def toy_data_generator(size, noise):
 x_train, y_train = toy_data_generator(train_size, 0.1)
 x_test, y_test = toy_data_generator(test_size, 0)
 
+
+
+##########################
+#Def model loss and model:
+##########################
 
 def model_loss(y_true, y_pred):
     return tf.reduce_mean(0.5 * (y_true - y_pred) ** 2)
@@ -50,15 +65,19 @@ update_old = tf.zeros(ind[-1])
 lam = 1
 
 
+
+###########
+#Functions:
+###########
+
 def fastmatvec(v, jac, lam):
     return tf.reduce_mean(tf.linalg.matvec(jac, tf.linalg.matvec(jac, v), transpose_a=True), axis=0) + lam * v
 
-
-def cg_method(jac, x, b, min_steps, precision):  # Martens Werte: min_steps = 10, precision = 0.0005
+# Martens Werte: min_steps = 10, precision = 0.0005
+def cg_method(jac, x, b, min_steps, precision):
     r = b - fastmatvec(x, jac, lam)
     d = r
     i, k = 0, min_steps
-    # Wie geht das schneller????
     phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
     while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
         k = np.maximum(min_steps, int(i/min_steps))
@@ -85,7 +104,6 @@ def preconditioned_cg_method(A, x, b, min_steps, precision):
     y = r / (b ** 2 + lam)
     d = y
     i, k = 0, min_steps
-    # Wie geht das schneller????
     phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
     while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
         k = np.maximum(min_steps, int(i/min_steps))
@@ -109,17 +127,22 @@ def preconditioned_cg_method(A, x, b, min_steps, precision):
     return x
 
 
+
+############
+#OPTIMIZERS:
+############
+
 def train_step_generalized_gauss_newton(x, y, lam, update_old):
     with tf.GradientTape() as tape:
         y_pred = model(x)
-        loss = model_loss(y, y_pred) #hier loss nicht mitteln?
+        loss = model_loss(y, y_pred)
 
     res = y_pred - y
     if model_neurons[0] == 1:
         res = tf.reshape(res, (batch_size, 1, 1))
 
     theta = model.trainable_variables
-    jac = tape.jacobian(y_pred, theta) #hier nicht auch das Mittel von y_pred als input?
+    jac = tape.jacobian(y_pred, theta)
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
 
@@ -144,7 +167,6 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
         lam *= 1.5
 
     return lam, update
-
 
 
 def train_step_gradient_descent(x, y, eta):
@@ -266,8 +288,6 @@ if GN_allowed == True:
 
 ax0.legend(loc='upper right')
 
-
-
 ####Test_loss_epochs_plot:
 g, ax1 = plt.subplots(1, 1, figsize=(6, 4))
 
@@ -280,8 +300,6 @@ if GN_allowed == True:
     ax1.plot(epoch_vec_GN, test_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
 
 ax1.legend(loc='upper right')
-
-
 
 ####Train_loss_time_plot:
 g1, ax2 = plt.subplots(1, 1, figsize=(6, 4))
@@ -296,8 +314,6 @@ if GN_allowed == True:
 
 ax2.legend(loc='upper right')
 
-
-
 ####Test_loss_time_plot:
 g2, ax3 = plt.subplots(1, 1, figsize=(6, 4))
 
@@ -310,8 +326,6 @@ if GN_allowed == True:
     ax3.plot(time_vec_GN, test_loss_vec_GN, 'bo', label='GN', linewidth=1.2)
 
 ax3.legend(loc='upper right')
-
-
 
 ####Approximated_function_plot:
 f, ax = plt.subplots(1, 1, figsize=(6, 4))
