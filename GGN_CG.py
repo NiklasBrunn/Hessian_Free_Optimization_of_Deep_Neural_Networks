@@ -13,8 +13,9 @@ tf.random.set_seed(1)
 train_size = 1500
 test_size = 500
 batch_size = 100
-epochs = 20
+epochs = 5
 model_neurons = [1, 30, 30, 1]
+GN_allowed = True
 
 def toy_data_generator(size, noise):
     x = tf.random.normal([size, model_neurons[0]])
@@ -161,24 +162,158 @@ def train_step_gradient_descent(x, y, eta):
 
 num_updates = int(train_size / batch_size)
 
-t = time.time()
+
+
+##########
+#TRAINING:
+##########
+
+#SGD-TRAINING:
+#t = time.time()
+test_loss_vec_SGD = np.zeros(epochs)
+train_loss_vec_SGD = np.zeros(epochs)
+epoch_vec_SGD = [i for i in range(epochs)]
+time_vec_SGD = np.zeros(epochs)
+
 for epoch in range(epochs):
+    train_loss = model_loss(y_train, model.predict(x_train))
+    print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
+                                                               1).zfill(len(str(epochs))), epochs, train_loss))
     test_loss = model_loss(y_test, model.predict(x_test))
     print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, test_loss))
 
-    for i in range(num_updates):
+    test_loss_vec_SGD[epoch] = test_loss
+    train_loss_vec_SGD[epoch] = train_loss
 
+    t = time.time()
+    for i in range(num_updates):
+        #test_loss = model_loss(y_test, model.predict(x_test))
+        #print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
+        #                                                           1).zfill(len(str(epochs))), epochs, test_loss))
         start = i * batch_size
         end = start + batch_size
 
-        lam, update_old = train_step_generalized_gauss_newton(
-            x_train[start: end], y_train[start: end], lam, update_old)
-    #    train_step_gradient_descent(x_train[start: end], y_train[start: end], 0.3)
+        train_step_gradient_descent(x_train[start: end], y_train[start: end], 0.3)
+    elapsed = time.time() - t
+    print('time for the update step:', elapsed)
+    if epoch == 0:
+        time_vec_SGD[epoch] = elapsed
+    else:
+        time_vec_SGD[epoch] = time_vec_SGD[epoch - 1] + elapsed
 
-elapsed = time.time() - t
+#print(time_vec_SGD)
+#elapsed = time.time() - t
+#print(elapsed)
 
 
+#GN-TRAINING:
+#t = time.time()
+test_loss_vec_GN = np.zeros(epochs)
+train_loss_vec_GN = np.zeros(epochs)
+epoch_vec_GN = [i for i in range(epochs)]
+time_vec_GN = np.zeros(epochs)
+
+if GN_allowed == True:
+    for epoch in range(epochs):
+        train_loss = model_loss(y_train, model.predict(x_train))
+        print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
+                                                                   1).zfill(len(str(epochs))), epochs, train_loss))
+        test_loss = model_loss(y_test, model.predict(x_test))
+        print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
+                                                                   1).zfill(len(str(epochs))), epochs, test_loss))
+
+        test_loss_vec_GN[epoch] = test_loss
+        train_loss_vec_GN[epoch] = train_loss
+
+        t = time.time()
+        for i in range(num_updates):
+            #test_loss = model_loss(y_test, model.predict(x_test))
+            #print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
+            #                                                           1).zfill(len(str(epochs))), epochs, test_loss))
+            start = i * batch_size
+            end = start + batch_size
+
+            lam, update_old = train_step_generalized_gauss_newton(
+                x_train[start: end], y_train[start: end], lam, update_old)
+        elapsed = time.time() - t
+        print('time for the update step:', elapsed)
+        if epoch == 0:
+            time_vec_GN[epoch] = elapsed
+        else:
+            time_vec_GN[epoch] = time_vec_GN[epoch - 1] + elapsed
+
+    #print(time_vec_GN)
+    #elapsed = time.time() - t
+    #print(elapsed)
+
+
+
+#######
+#PLOTS:
+#######
+
+####Train_loss_epochs_plot:
+h, ax0 = plt.subplots(1, 1, figsize=(6, 4))
+
+ax0.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
+ax0.set_xlabel('Epochs')
+ax0.set_ylabel('Train-Loss')
+ax0.set_title('Train-Loss per Epochs:')
+
+if GN_allowed == True:
+    ax0.plot(epoch_vec_GN, train_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
+
+ax0.legend(loc='upper right')
+
+
+
+####Test_loss_epochs_plot:
+g, ax1 = plt.subplots(1, 1, figsize=(6, 4))
+
+ax1.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
+ax1.set_xlabel('Epochs')
+ax1.set_ylabel('Test-Loss')
+ax1.set_title('Test-Loss per Epochs:')
+
+if GN_allowed == True:
+    ax1.plot(epoch_vec_GN, test_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
+
+ax1.legend(loc='upper right')
+
+
+
+####Train_loss_time_plot:
+g1, ax2 = plt.subplots(1, 1, figsize=(6, 4))
+
+ax2.plot(time_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
+ax2.set_xlabel('Time (in seconds)')
+ax2.set_ylabel('Train-Loss')
+ax2.set_title('Train-Loss per Time:')
+
+if GN_allowed == True:
+    ax2.plot(time_vec_GN, train_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
+
+ax2.legend(loc='upper right')
+
+
+
+####Test_loss_time_plot:
+g2, ax3 = plt.subplots(1, 1, figsize=(6, 4))
+
+ax3.plot(time_vec_SGD, test_loss_vec_SGD, 'ro', label='SGD', linewidth=1.2)
+ax3.set_xlabel('Time (in seconds)')
+ax3.set_ylabel('Test-Loss')
+ax3.set_title('Test-Loss per Time:')
+
+if GN_allowed == True:
+    ax3.plot(time_vec_GN, test_loss_vec_GN, 'bo', label='GN', linewidth=1.2)
+
+ax3.legend(loc='upper right')
+
+
+
+####Approximated_function_plot:
 f, ax = plt.subplots(1, 1, figsize=(6, 4))
 
 a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
@@ -192,7 +327,7 @@ ax.plot(a, x, label='Prediction', c='blue')
 ax.set_ylim(-0.6, 10)
 ax.set_xlim(-np.sqrt(10), np.sqrt(10))
 
-ax.legend(loc='upper left')
+ax.legend(loc='upper right')
 plt.show()
 
 # https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
