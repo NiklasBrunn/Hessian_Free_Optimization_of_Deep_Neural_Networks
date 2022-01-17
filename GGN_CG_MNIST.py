@@ -146,7 +146,6 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     #grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
     #grad_obj = tf.squeeze(tf.reduce_mean([tf.matmul(tf.transpose(jac, perm=[0,2,1])[i,:,:],res[i,:,:]) for i in range(batch_size)], axis=0)) #braucht tuuuuurbo lange zum berechnen :O
 
-    #update = preconditioned_cg_method(jac_net, jac_softmax, update_old, grad_obj, 5, 0.0005)
     update = preconditioned_cg_method(jac, jac_softmax, update_old, grad_obj, 10, 0.0005)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
