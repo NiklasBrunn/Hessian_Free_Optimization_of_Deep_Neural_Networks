@@ -14,8 +14,8 @@ tf.get_logger().setLevel(logging.ERROR)
 
 tf.random.set_seed(11)
 
-data_size = 1280
-batch_size = 128
+data_size = 60000
+batch_size = 1000
 epochs = 5
 model_neurons_mnist = [784, 800, 10]
 
@@ -69,7 +69,6 @@ def cg_method(jac, jac_softmax, x, b, min_steps, precision):  # Martens Werte: m
     i, k = 0, min_steps
     phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
     while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
-        print(i)
         k = np.maximum(min_steps, int(i/min_steps))
         z = fastmatvec(d, jac, jac_softmax, lam)
         alpha = tf.tensordot(r, r, 1) / tf.tensordot(d, z, 1)
@@ -148,7 +147,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     #grad_obj = tf.squeeze(tf.reduce_mean([tf.matmul(tf.transpose(jac, perm=[0,2,1])[i,:,:],res[i,:,:]) for i in range(batch_size)], axis=0)) #braucht tuuuuurbo lange zum berechnen :O
 
     #update = preconditioned_cg_method(jac_net, jac_softmax, update_old, grad_obj, 5, 0.0005)
-    update = preconditioned_cg_method(jac, jac_softmax, update_old, grad_obj, 5, 0.0005)
+    update = preconditioned_cg_method(jac, jac_softmax, update_old, grad_obj, 10, 0.0005)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
@@ -197,9 +196,9 @@ for epoch in range(epochs):
         start = i * batch_size
         end = start + batch_size
 
-        lam, update_old = train_step_generalized_gauss_newton(
-            train_x[start: end], train_y[start: end], lam, update_old)
-#        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.1)
+#        lam, update_old = train_step_generalized_gauss_newton(
+#            train_x[start: end], train_y[start: end], lam, update_old)
+        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.1)
 
 #elapsed = time.time() - t
 
