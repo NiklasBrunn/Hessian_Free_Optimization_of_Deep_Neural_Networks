@@ -22,7 +22,7 @@ batch_size = 100
 epochs = 5
 model_neurons = [1, 30, 30, 1]
 GN_allowed = True # wenn TRUE, dann wird auch GN-Update nach dem SGD-Update performt!
-
+SGD_allowed = True # wenn TRUE, dann wird auch SGD-Update nach dem SGD-Update performt!
 
 #################
 #Data generation:
@@ -202,53 +202,54 @@ train_loss_vec_SGD = np.zeros(epochs)
 epoch_vec_SGD = [i for i in range(epochs)]
 time_vec_SGD = np.zeros(epochs)
 
-for epoch in range(epochs):
-    train_loss = model_loss(y_train, model.predict(x_train))
-    print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
-                                                               1).zfill(len(str(epochs))), epochs, train_loss))
-    test_loss = model_loss(y_test, model.predict(x_test))
-    print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
-                                                               1).zfill(len(str(epochs))), epochs, test_loss))
+if SGD_allowed == True:
+    for epoch in range(epochs):
+        train_loss = model_loss(y_train, model.predict(x_train))
+        print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
+                                                                   1).zfill(len(str(epochs))), epochs, train_loss))
+        test_loss = model_loss(y_test, model.predict(x_test))
+        print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
+                                                                   1).zfill(len(str(epochs))), epochs, test_loss))
 
-    test_loss_vec_SGD[epoch] = test_loss
-    train_loss_vec_SGD[epoch] = train_loss
+        test_loss_vec_SGD[epoch] = test_loss
+        train_loss_vec_SGD[epoch] = train_loss
 
-    t = time.time()
-    for i in range(num_updates):
-        #test_loss = model_loss(y_test, model.predict(x_test))
-        #print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
-        #                                                           1).zfill(len(str(epochs))), epochs, test_loss))
-        start = i * batch_size
-        end = start + batch_size
+        t = time.time()
+        for i in range(num_updates):
+            #test_loss = model_loss(y_test, model.predict(x_test))
+            #print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
+            #                                                           1).zfill(len(str(epochs))), epochs, test_loss))
+            start = i * batch_size
+            end = start + batch_size
 
-        train_step_gradient_descent(x_train[start: end], y_train[start: end], 0.3)
-    elapsed = time.time() - t
-    print('time for the update step:', elapsed)
-    if epoch == 0:
-        time_vec_SGD[epoch] = elapsed
-    else:
-        time_vec_SGD[epoch] = time_vec_SGD[epoch - 1] + elapsed
+            train_step_gradient_descent(x_train[start: end], y_train[start: end], 0.3)
+        elapsed = time.time() - t
+        print('time for the update step:', elapsed)
+        if epoch == 0:
+            time_vec_SGD[epoch] = elapsed
+        else:
+            time_vec_SGD[epoch] = time_vec_SGD[epoch - 1] + elapsed
 
-#print(time_vec_SGD)
-#elapsed = time.time() - t
-#print(elapsed)
+    #print(time_vec_SGD)
+    #elapsed = time.time() - t
+    #print(elapsed)
 
-#Approximated_function_plot:
-f, ax4 = plt.subplots(1, 1, figsize=(6, 4))
+    #Approximated_function_plot:
+    f, ax4 = plt.subplots(1, 1, figsize=(6, 4))
 
-a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
-x = model.predict(a)
+    a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
+    x = model.predict(a)
 
-ax4.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
+    ax4.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
 
-ax4.plot(a, a**2, label='Ground Truth', c='green')
-ax4.plot(a, x, label='Prediction', c='blue')
+    ax4.plot(a, a**2, label='Ground Truth', c='green')
+    ax4.plot(a, x, label='Prediction', c='blue')
 
-ax4.set_ylim(-0.6, 10)
-ax4.set_xlim(-np.sqrt(10), np.sqrt(10))
-ax4.set_title('Prediction SGD_Model')
+    ax4.set_ylim(-0.6, 10)
+    ax4.set_xlim(-np.sqrt(10), np.sqrt(10))
+    ax4.set_title('Prediction SGD_Model')
 
-ax4.legend(loc='upper right')
+    ax4.legend(loc='upper right')
 
 
 #GN-TRAINING:
