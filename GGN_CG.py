@@ -392,7 +392,7 @@ plt.show()
 '''
 https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
 
-1) Epochen/Time - Plot für die Modelle hinzufügen
+1) Epochen (x-Achse) / Time (y-Achse) - Plot für die Modelle hinzufügen
 2) Plots sollen gemittelte Werte mit Auswertungen von ca. 5 verschidenen Random-
    Seeds zeigen
 3) CasADi
