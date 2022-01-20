@@ -19,41 +19,53 @@ Model_Seed = 1
 train_size = 1500
 test_size = 500
 batch_size = 100
-epochs = 5
-CG_steps = 10
-#outliers = True
-#max_num_outliers = 100
+epochs = 20
 model_neurons = [1, 30, 30, 1]
-GN_allowed = True # wenn TRUE, dann wird auch GN-Update nach dem SGD-Update performt!
-SGD_allowed = True # wenn TRUE, dann wird auch SGD-Update nach dem SGD-Update performt!
-plotting = False # wenn True, dann werden die generierten Plots angezeigt!
+num_updates = int(train_size / batch_size)
 
-#################
-#Data generation:
-#################
+CG_steps = 10 # Anzahl der min. Schritte in der CG-Methode
+outliers = True # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert
+max_num_outliers = 100 # Anzahl der Outliers im generierten Datensatz
+GN_allowed = True # wenn True, dann wird auch GN-Update nach dem SGD-Update performt!
+SGD_allowed = True # wenn True, dann wird auch SGD-Update nach dem SGD-Update performt!
+plotting = True # wenn True, dann werden die generierten Plots angezeigt!
+
+#########################################
+#Data generation (optional mit Outliern):
+#########################################
 
 def toy_data_generator(size, noise, outliers, max_num_outliers):
     x = tf.random.normal([size, model_neurons[0]])
-    y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
-    #if outliers == True:
-    #    outliers_index_vec = np.zeros([size, model_neurons[0]])
-    #    print(outliers_index_vec)
-    #    vec = np.random.randint(0, size, max_num_outliers)
-    #    for j in range(vec):
-    #        print(outliers_index_vec[j][1])
-            #outliers_index_vec[j] = [vec[j]]
-        #print(outliers_index_vec)
-        #for i in range(max_num_outliers):
-        #    print(y[outliers_index_vec[i]]) #+= tf.random.normal([1], 0, 1)
-        #    print(tf.random.normal([1], 0, 1))
-    #print(tf.shape(y))
-    #print(y)
+
+    if outliers == True:
+
+        vec = np.zeros(size)
+        outliers_index_vec = np.random.randint(0, size, max_num_outliers)
+
+        for j in range(max_num_outliers):
+
+            # y-Werte werden mit Normal-3-1-gezogenen Werten addiert
+            #vec[outliers_index_vec[j]] = vec[outliers_index_vec[j]] + np.random.normal(3, 1, 1)[0]
+
+            # y-Werte werden mit Normal-0-10-gezogenen Werten addiert
+            #vec[outliers_index_vec[j]] = vec[outliers_index_vec[j]] + np.random.normal(0, 10, 1)[0]
+
+            # y-Werte werden mit 6 addiert
+            vec[outliers_index_vec[j]] = vec[outliers_index_vec[j]] + 6.0
+
+        vec = tf.constant(vec, dtype=tf.float32, shape=[size, 1])
+        y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]]) + vec
+
+    else:
+
+        y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
+
     return x, y
 
-tf.random.set_seed(Data_Seed)
+tf.random.set_seed(Data_Seed) # Test und Trainingsdaten ziehen so verschidene x-Werte
 
 x_train, y_train = toy_data_generator(train_size, 0.1, outliers, max_num_outliers)
-x_test, y_test = toy_data_generator(test_size, 0, outliers, max_num_outliers)
+x_test, y_test = toy_data_generator(test_size, 0, False, max_num_outliers)
 
 
 
@@ -244,9 +256,6 @@ def train_step_gradient_descent(x, y, eta):
     model.set_weights([p - u for (p, u) in zip(theta, update)])
 
 
-num_updates = int(train_size / batch_size)
-
-
 
 ##########
 #TRAINING:
@@ -281,7 +290,7 @@ if SGD_allowed == True:
 
             train_step_gradient_descent(x_train[start: end], y_train[start: end], 0.3)
         elapsed = time.time() - t
-        print('time for the update step:', elapsed)
+        print('estimated time for the update step:', elapsed, 'sec')
         if epoch == 0:
             time_vec_SGD[epoch] = elapsed
         else:
@@ -354,7 +363,7 @@ if GN_allowed == True:
             lam, update_old = train_step_generalized_gauss_newton(
                 x_train[start: end], y_train[start: end], lam, update_old)
         elapsed = time.time() - t
-        print('time for the update step:', elapsed)
+        print('estimated time for the update step:', elapsed, 'sec')
         if epoch == 0:
             time_vec_GN[epoch] = elapsed
         else:
