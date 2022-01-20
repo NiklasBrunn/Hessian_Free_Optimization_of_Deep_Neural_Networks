@@ -1,7 +1,3 @@
-##FUNKTIONIERT LEIDER NOCH NICHT WEGEN LOSS ODER DATENFORMAT! (SGD)
-##DIE GN-METHODE FUNKTIONIERT WAHRSCHEINLICH AUCH NOCH NICHT (noch nicht getestet...)
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -35,7 +31,6 @@ def model_loss_mnist(y_true, y_pred):
     #return tf.reduce_mean(-tf.math.reduce_sum(y_true * tf.math.log(tf.nn.softmax(y_pred)), axis=1))
     return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_true, y_pred))
 
-#https://fluxml.ai/Flux.jl/v0.12/models/losses/#Flux.Losses.logitcrossentropy
 
 input_layer_mnist = tf.keras.Input(shape=(model_neurons_mnist[0]))
 layer_1_mnist = tf.keras.layers.Dense(model_neurons_mnist[1], activation='relu')(input_layer_mnist)
@@ -62,8 +57,8 @@ def fastmatvec(v, jac_net, jac_softmax, lam):
     prod3 = tf.linalg.matvec(jac_net, prod2, transpose_a=True)
     return tf.reduce_mean(prod3, axis=0) + lam * v
 
-
-def cg_method(jac, jac_softmax, x, b, min_steps, precision):  # Martens Werte: min_steps = 10, precision = 0.0005
+# Martens Werte: min_steps = 10, precision = 0.0005
+def cg_method(jac, jac_softmax, x, b, min_steps, precision):
     r = b - fastmatvec(x, jac, jac_softmax, lam)
     d = r
     i, k = 0, min_steps
@@ -119,8 +114,6 @@ def preconditioned_cg_method(A, B, x, b, min_steps, precision):
 def train_step_generalized_gauss_newton(x, y, lam, update_old):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model_mnist(x)
-        #y_pred_mean = tf.math.reduce_sum(model_mnist(x), axis=0)
-        #akt_out = tf.nn.softmax(y_pred_mean)
         akt_out = tf.nn.softmax(y_pred)
         loss = model_loss_mnist(y, y_pred)
 
@@ -201,5 +194,6 @@ for epoch in range(epochs):
 
 #elapsed = time.time() - t
 
-#print(np.argmax(model_mnist.predict(test_x[100:150, :]), axis=1))
-print('falsch klassifizierte Test-MNIST-Zahlen:', np.sum(np.where(np.argmax(test_y, axis=1) - np.argmax(model_mnist.predict(test_x), axis=1) !=0, 1, 0)))
+wrong_classified = np.sum(np.where(np.argmax(test_y, axis=1) - np.argmax(model_mnist.predict(test_x), axis=1) !=0, 1, 0))
+print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
+print('test accuracy:', (10000 - wrong_classified) / 10000)
