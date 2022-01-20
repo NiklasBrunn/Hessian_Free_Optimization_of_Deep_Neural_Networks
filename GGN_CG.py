@@ -19,7 +19,7 @@ Model_Seed = 1
 train_size = 1500
 test_size = 500
 batch_size = 100
-epochs = 20
+epochs = 2
 model_neurons = [1, 30, 30, 1]
 num_updates = int(train_size / batch_size)
 
@@ -47,8 +47,8 @@ def toy_data_generator(size, noise, outliers, max_num_outliers):
             # y-Werte werden mit Normal-3-1-gezogenen Werten addiert
             #vec[outliers_index_vec[j]] = vec[outliers_index_vec[j]] + np.random.normal(3, 1, 1)[0]
 
-            # y-Werte werden mit Normal-0-10-gezogenen Werten addiert
-            #vec[outliers_index_vec[j]] = vec[outliers_index_vec[j]] + np.random.normal(0, 10, 1)[0]
+            # y-Werte werden mit Normal-0-1-gezogenen Werten addiert
+            #vec[outliers_index_vec[j]] = vec[outliers_index_vec[j]] + np.random.normal(0, 1, 1)[0]
 
             # y-Werte werden mit 6 addiert
             vec[outliers_index_vec[j]] = vec[outliers_index_vec[j]] + 6.0
