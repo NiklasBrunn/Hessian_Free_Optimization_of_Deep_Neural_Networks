@@ -20,23 +20,40 @@ train_size = 1500
 test_size = 500
 batch_size = 100
 epochs = 5
+CG_steps = 10
+#outliers = True
+#max_num_outliers = 100
 model_neurons = [1, 30, 30, 1]
 GN_allowed = True # wenn TRUE, dann wird auch GN-Update nach dem SGD-Update performt!
 SGD_allowed = True # wenn TRUE, dann wird auch SGD-Update nach dem SGD-Update performt!
+plotting = False # wenn True, dann werden die generierten Plots angezeigt!
 
 #################
 #Data generation:
 #################
 
-def toy_data_generator(size, noise):
+def toy_data_generator(size, noise, outliers, max_num_outliers):
     x = tf.random.normal([size, model_neurons[0]])
     y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
+    #if outliers == True:
+    #    outliers_index_vec = np.zeros([size, model_neurons[0]])
+    #    print(outliers_index_vec)
+    #    vec = np.random.randint(0, size, max_num_outliers)
+    #    for j in range(vec):
+    #        print(outliers_index_vec[j][1])
+            #outliers_index_vec[j] = [vec[j]]
+        #print(outliers_index_vec)
+        #for i in range(max_num_outliers):
+        #    print(y[outliers_index_vec[i]]) #+= tf.random.normal([1], 0, 1)
+        #    print(tf.random.normal([1], 0, 1))
+    #print(tf.shape(y))
+    #print(y)
     return x, y
 
 tf.random.set_seed(Data_Seed)
 
-x_train, y_train = toy_data_generator(train_size, 0.1)
-x_test, y_test = toy_data_generator(test_size, 0)
+x_train, y_train = toy_data_generator(train_size, 0.1, outliers, max_num_outliers)
+x_test, y_test = toy_data_generator(test_size, 0, outliers, max_num_outliers)
 
 
 
@@ -131,6 +148,34 @@ def preconditioned_cg_method(A, x, b, min_steps, precision):
 
     return x
 
+# Martens Werte: min_steps = 10, precision = 0.0005
+def preconditioned_cg_method_complete_GN(GN, x, b, min_steps, precision):
+    r = b - (tf.linalg.matvec(GN, x) + lam * x)
+    y = r / (b ** 2 + lam)
+    d = y
+    i, k = 0, min_steps
+    phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
+    while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
+        k = np.maximum(min_steps, int(i/min_steps))
+        z = tf.linalg.matvec(GN, d) + lam * d
+        alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
+        x = x + alpha * d
+        r_new = r - alpha * z
+        y_new = r_new / (b ** 2 + lam)
+        beta = tf.tensordot(r_new, y_new, 1) / tf.tensordot(r, y, 1)
+        d = y_new + beta * d
+        r = r_new
+        y = y_new
+        phi_history = np.append(phi_history, np.array(
+            - 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1))))
+        if i >= k:
+            s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
+        else:
+            s = k
+        i += 1
+
+    return x
+
 
 
 ############
@@ -138,7 +183,7 @@ def preconditioned_cg_method(A, x, b, min_steps, precision):
 ############
 
 def train_step_generalized_gauss_newton(x, y, lam, update_old):
-    with tf.GradientTape() as tape:
+    with tf.GradientTape(persistent=True) as tape:
         y_pred = model(x)
         loss = model_loss(y, y_pred)
 
@@ -151,9 +196,21 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
 
+    # Gradient berechnet durch Jacobi_Vector_Produkt:
     grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
 
-    update = preconditioned_cg_method(jac, update_old, grad_obj, 5, 0.0005)
+    # (optional) Gradient mit Tape berechnen (!! ist gleich schnell):
+    #grad_obj = tape.gradient(loss, theta)
+    #grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
+
+
+    update = preconditioned_cg_method(jac, update_old, grad_obj, CG_steps, 0.0005)
+
+    # (optional) mit vorher berechneter GN-Matrix (!!dauert signifikant länger oben):
+    # GN-Matrix optional berechnet
+    #GN = tf.reduce_mean(tf.matmul(jac, jac, transpose_a = True), axis=0)
+    #update = preconditioned_cg_method_complete_GN(GN, update_old, grad_obj, 10, 0.0005)
+
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
@@ -382,7 +439,10 @@ if GN_allowed == True:
 
 ax3.legend(loc='upper right')
 
-plt.show()
+if plotting == True:
+    plt.show()
+else:
+    print("no plots were generated ...")
 
 
 #################
