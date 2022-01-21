@@ -20,14 +20,23 @@ train_size = 1500
 test_size = 500
 batch_size = 100
 epochs = 2
+CG_steps = 10 # minimale Anzahl der Schritte in der CG-Methode.
 model_neurons = [1, 30, 30, 1]
 num_updates = int(train_size / batch_size)
 
-CG_steps = 10 # Anzahl der min. Schritte in der CG-Methode
-outliers = True # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert
-max_num_outliers = 100 # Anzahl der Outliers im generierten Datensatz
+outliers = True # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert.
+max_num_outliers = 100 # Maximale Anzahl der Outliers im generierten Datensatz.
+
+SGD_allowed = True # wenn True, dann wird SGD-Update performt!
 GN_allowed = True # wenn True, dann wird auch GN-Update nach dem SGD-Update performt!
-SGD_allowed = True # wenn True, dann wird auch SGD-Update nach dem SGD-Update performt!
+gradient_cal = 'standard' # kann als 'standard' oder 'alternativ' gesetzt werden!
+                          # wenn standard, dann wird der Gradient mit Rückwärts AD durch
+                          # die ges. Objektfunktion berechnet, mit alternativ wird
+                          # nur die Jacobi bezgl. der Netzwerkparameter berechnet und dann
+                          # mit den Residuen multipliziert.
+GN_cal = True # wenn True, dann wird die GN-Matrix vor dem CG-update komplett berechnet,
+              # ansonsten werden im CG-update Matrix-Vektor Produkte berechnet,
+              # ohne Verwendung der GN-Matrix!
 plotting = True # wenn True, dann werden die generierten Plots angezeigt!
 
 #########################################
@@ -208,20 +217,28 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
 
-    # Gradient berechnet durch Jacobi_Vector_Produkt:
-    grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
+    if gradient_cal == 'standard':
+        # Gradient berechnet durch Jacobi_Vector_Produkt:
+        grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
 
-    # (optional) Gradient mit Tape berechnen (!! ist gleich schnell):
-    #grad_obj = tape.gradient(loss, theta)
-    #grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
+    elif gradient_cal == 'alternativ':
+        # (optional) Gradient mit Tape berechnen (!! ist gleich schnell):
+        grad_obj = tape.gradient(loss, theta)
+        grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
+
+    else:
+        print('es wird kein Gradient berechnet, da <gradient_call> nicht richtig definiert ist!')
 
 
-    update = preconditioned_cg_method(jac, update_old, grad_obj, CG_steps, 0.0005)
+    if GN_cal == True:
+        # (optional) mit vorher berechneter GN-Matrix (!!dauert signifikant länger oben):
+        # GN-Matrix optional berechnet
+        GN = tf.reduce_mean(tf.matmul(jac, jac, transpose_a = True), axis=0)
+        update = preconditioned_cg_method_complete_GN(GN, update_old, grad_obj, 10, 0.0005)
 
-    # (optional) mit vorher berechneter GN-Matrix (!!dauert signifikant länger oben):
-    # GN-Matrix optional berechnet
-    #GN = tf.reduce_mean(tf.matmul(jac, jac, transpose_a = True), axis=0)
-    #update = preconditioned_cg_method_complete_GN(GN, update_old, grad_obj, 10, 0.0005)
+    elif GN_cal == False:
+        update = preconditioned_cg_method(jac, update_old, grad_obj, CG_steps, 0.0005)
+
 
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
