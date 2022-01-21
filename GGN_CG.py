@@ -24,20 +24,20 @@ CG_steps = 10 # minimale Anzahl der Schritte in der CG-Methode.
 model_neurons = [1, 30, 30, 1]
 num_updates = int(train_size / batch_size)
 
-outliers = True # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert.
+outliers = False # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert.
 max_num_outliers = 100 # Maximale Anzahl der Outliers im generierten Datensatz.
 
-SGD_allowed = True # wenn True, dann wird SGD-Update performt!
+SGD_allowed = False # wenn True, dann wird SGD-Update performt!
 GN_allowed = True # wenn True, dann wird auch GN-Update nach dem SGD-Update performt!
 gradient_cal = 'standard' # kann als 'standard' oder 'alternativ' gesetzt werden!
                           # wenn standard, dann wird der Gradient mit Rückwärts AD durch
                           # die ges. Objektfunktion berechnet, mit alternativ wird
                           # nur die Jacobi bezgl. der Netzwerkparameter berechnet und dann
                           # mit den Residuen multipliziert.
-GN_cal = True # wenn True, dann wird die GN-Matrix vor dem CG-update komplett berechnet,
+GN_cal = False # wenn True, dann wird die GN-Matrix vor dem CG-update komplett berechnet,
               # ansonsten werden im CG-update Matrix-Vektor Produkte berechnet,
               # ohne Verwendung der GN-Matrix!
-plotting = True # wenn True, dann werden die generierten Plots angezeigt!
+plotting = False # wenn True, dann werden die generierten Plots angezeigt!
 
 #########################################
 #Data generation (optional mit Outliern):
@@ -112,6 +112,43 @@ lam = 1
 ###########
 #Functions:
 ###########
+
+#Funktion für Hesse-Vektor-Produkte ohne davor Gradienten berechnet zu haben:
+def efficient_hessian_vec(v, x, y, theta):
+    #s = time.time() # Einfügen ermöglicht die Rechenzeit für die Funktion auszugeben
+    with tf.GradientTape(persistent=True) as tape2:
+        with tf.GradientTape(persistent=True) as tape1:
+            y_pred = model(x)
+            loss = model_loss(y, y_pred)
+        theta = model.trainable_variables
+        grad = tape1.gradient(loss, theta)
+
+        #grad = tape1.gradient(loss, theta[0])# neue gute Methode zum Vergleich
+        #gradd = tape1.gradient(loss, theta[0])## langsame Berechnung mit der korrekten Hesse
+
+        grad_1 = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad)], axis=0))
+        mat_vec = tf.math.multiply(grad_1, tf.stop_gradient(v))
+
+        #mat_vec = tf.math.multiply(grad_1, tf.stop_gradient(v[0:n_params[0]]))# neue gute Methode zum Vergleich
+
+    mat_vec_res = tape2.gradient(mat_vec, theta)
+
+    #mat_vec_res = tape2.gradient(mat_vec, theta[0])# neue gute Methode zum Vergleich
+
+    mat_vec_res = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(mat_vec_res)], axis=0))
+
+    #hess = tape2.jacobian(gradd, theta[0])## langsame Berechnung mit der korrekten Hesse
+    #hess = tf.reshape(hess, [n_params[0], n_params[0]])## langsame Berechnung mit der korrekten Hesse
+
+    #hess_vec = tf.linalg.matvec(hess, v[0:n_params[0]])## langsame Berechnung mit der korrekten Hesse
+    #print(hess_vec)## langsame Berechnung mit der korrekten Hesse
+
+    #print(mat_vec_res)# neue gute Methode zum Vergleich
+
+    #elapsed = time.time() - s # Einfügen ermöglicht die Rechenzeit für die Funktion auszugeben
+    #print('estimated time for hessian-vector calculation is:', elapsed)
+    return mat_vec_res
+
 
 def fastmatvec(v, jac, lam):
     return tf.reduce_mean(tf.linalg.matvec(jac, tf.linalg.matvec(jac, v), transpose_a=True), axis=0) + lam * v
@@ -203,6 +240,71 @@ def preconditioned_cg_method_complete_GN(GN, x, b, min_steps, precision):
 #OPTIMIZERS:
 ############
 
+###NEW!! das ist der standard_GN_Trainingsstep, bei dem noch Hesse_Vektor_Produkte berechnet werden!
+def train_step_generalized_gauss_newton_Hesse_vec(x, y, lam, update_old):
+    with tf.GradientTape(persistent=True) as tape:
+        y_pred = model(x)
+        loss = model_loss(y, y_pred)
+
+    res = y_pred - y
+    if model_neurons[0] == 1:
+        res = tf.reshape(res, (batch_size, 1, 1))
+
+    theta = model.trainable_variables
+
+    #zusätzlich zum CG-GN-Verfahren wird hier einmal das Hasse-Vektorprodukt von update_old mit der obj_hesse berechnet:
+    #mat_vec_res = efficient_hessian_vec(update_old, x, y, theta)
+    #print('Matrix_Vector_Produkt von Hesse mit Einervektor:', mat_vec_res)
+
+    jac = tape.jacobian(y_pred, theta)
+    jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
+                        for i, h in enumerate(jac)], axis=2)
+
+    if gradient_cal == 'standard':
+        # Gradient berechnet durch Jacobi_Vector_Produkt:
+        grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
+
+    elif gradient_cal == 'alternativ':
+        # (optional) Gradient mit Tape berechnen (!! ist gleich schnell):
+        grad_obj = tape.gradient(loss, theta)
+        grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
+
+    else:
+        print('es wird kein Gradient berechnet, da <gradient_call> nicht richtig definiert ist!')
+
+
+    if GN_cal == True:
+        # (optional) mit vorher berechneter GN-Matrix (!!dauert signifikant länger oben):
+        # GN-Matrix optional berechnet
+        GN = tf.reduce_mean(tf.matmul(jac, jac, transpose_a = True), axis=0)
+        update = preconditioned_cg_method_complete_GN(GN, update_old, grad_obj, 10, 0.0005)
+
+    elif GN_cal == False:
+        update = preconditioned_cg_method(jac, update_old, grad_obj, CG_steps, 0.0005)
+
+
+
+    theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
+
+    theta_new = [p - tf.reshape(u, s) for (p, u, s) in zip(theta, theta_new, param_shape)]
+
+    model.set_weights(theta_new)
+
+    impr = loss - model_loss(y,  model(x))
+
+    rho = impr / (tf.tensordot(grad_obj, update, 1) +
+                  tf.tensordot(update, fastmatvec(update, jac, 0), 1))
+
+    if rho > 0.75:
+        lam /= 1.5
+    elif rho < 0.25:
+        lam *= 1.5
+
+    return lam, update
+
+
+
+# standard_GN_train_step:
 def train_step_generalized_gauss_newton(x, y, lam, update_old):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model(x)
@@ -213,6 +315,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
         res = tf.reshape(res, (batch_size, 1, 1))
 
     theta = model.trainable_variables
+
     jac = tape.jacobian(y_pred, theta)
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
@@ -260,6 +363,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     return lam, update
 
 
+#standard_SGD_Training:
 def train_step_gradient_descent(x, y, eta):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model(x)
@@ -372,7 +476,7 @@ if GN_allowed == True:
             start = i * batch_size
             end = start + batch_size
 
-            lam, update_old = train_step_generalized_gauss_newton(
+            lam, update_old = train_step_generalized_gauss_newton_Hesse_vec(
                 x_train[start: end], y_train[start: end], lam, update_old)
         elapsed = time.time() - t
         print('estimated time for the update step:', elapsed, 'sec')
@@ -469,6 +573,7 @@ https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
    Seeds zeigen
 3) CasADi
 4) R-Methode bzw. fastmatvec-Methode implementieren
+   ÜBERPRÜFEN OB DAS HASSE-VEKTOR-PRODUKT TATSÄCHLICH DIE HESSE VERWENDET!!!
 5) [optional] optimale Hyperparameter für SGD herausfinden und gegentesten mit
               optimalen Hyperparametern für GN (z.B. Anzahl Schritte in CG ...)
 '''
