@@ -45,13 +45,13 @@ def toy_data_generator(size, noise, outliers, max_num_outliers):
         for j in range(max_num_outliers):
 
             # y-Werte werden mit Normal-3-1-gezogenen Werten addiert
-            #vec[outliers_index_vec[j]] = vec[outliers_index_vec[j]] + np.random.normal(3, 1, 1)[0]
+            #vec[outliers_index_vec[j]] = np.random.normal(3, 1, 1)[0]
 
             # y-Werte werden mit Normal-0-1-gezogenen Werten addiert
-            #vec[outliers_index_vec[j]] = vec[outliers_index_vec[j]] + np.random.normal(0, 1, 1)[0]
+            #vec[outliers_index_vec[j]] = np.random.normal(0, 1, 1)[0]
 
             # y-Werte werden mit 6 addiert
-            vec[outliers_index_vec[j]] = vec[outliers_index_vec[j]] + 6.0
+            vec[outliers_index_vec[j]] =  6.0
 
         vec = tf.constant(vec, dtype=tf.float32, shape=[size, 1])
         y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]]) + vec
@@ -261,6 +261,14 @@ def train_step_gradient_descent(x, y, eta):
 #TRAINING:
 ##########
 
+#Erstellen der Data-Plots:
+f, ax0 = plt.subplots(1, 1, figsize=(6, 4))
+
+a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
+ax0.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
+ax0.plot(a, a**2, label='Ground Truth', c='green')
+
+
 #SGD-TRAINING:
 #t = time.time()
 test_loss_vec_SGD = np.zeros(epochs)
@@ -300,22 +308,9 @@ if SGD_allowed == True:
     #elapsed = time.time() - t
     #print(elapsed)
 
-    #Approximated_function_plot:
-    f, ax4 = plt.subplots(1, 1, figsize=(6, 4))
-
-    a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
+    # prediction-plot of the model:
     x = model.predict(a)
-
-    ax4.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
-
-    ax4.plot(a, a**2, label='Ground Truth', c='green')
-    ax4.plot(a, x, label='Prediction', c='blue')
-
-    ax4.set_ylim(-0.6, 10)
-    ax4.set_xlim(-np.sqrt(10), np.sqrt(10))
-    ax4.set_title('Prediction SGD_Model')
-
-    ax4.legend(loc='upper right')
+    ax0.plot(a, x, label='Prediction SGD', c='blue')
 
 
 #GN-TRAINING:
@@ -369,27 +364,18 @@ if GN_allowed == True:
         else:
             time_vec_GN[epoch] = time_vec_GN[epoch - 1] + elapsed
 
-    #Approximated_function_plot:
-    f, ax5 = plt.subplots(1, 1, figsize=(6, 4))
-
-    a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
-    x = model.predict(a)
-
-    ax5.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
-
-    ax5.plot(a, a**2, label='Ground Truth', c='green')
-    ax5.plot(a, x, label='Prediction', c='blue')
-
-    ax5.set_ylim(-0.6, 10)
-    ax5.set_xlim(-np.sqrt(10), np.sqrt(10))
-    ax5.set_title('Prediction GN_Model')
-
-    ax5.legend(loc='upper right')
-
     #print(time_vec_GN)
     #elapsed = time.time() - t
     #print(elapsed)
 
+    # prediction-plot of the model:
+    x = model.predict(a)
+    ax0.plot(a, x, label='Prediction GN', c='orange')
+
+ax0.set_ylim(-0.6, 10)
+ax0.set_xlim(-np.sqrt(10), np.sqrt(10))
+ax0.set_title('Data and Predictions')
+ax0.legend(loc='upper right')
 
 
 #######
@@ -397,56 +383,56 @@ if GN_allowed == True:
 #######
 
 ####Train_loss_epochs_plot:
-h, ax0 = plt.subplots(1, 1, figsize=(6, 4))
+h, ax1 = plt.subplots(1, 1, figsize=(6, 4))
 
-ax0.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
-ax0.set_xlabel('Epochs')
-ax0.set_ylabel('Train-Loss')
-ax0.set_title('Train-Loss per Epochs:')
-
-if GN_allowed == True:
-    ax0.plot(epoch_vec_GN, train_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
-
-ax0.legend(loc='upper right')
-
-####Test_loss_epochs_plot:
-g, ax1 = plt.subplots(1, 1, figsize=(6, 4))
-
-ax1.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
+ax1.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
 ax1.set_xlabel('Epochs')
-ax1.set_ylabel('Test-Loss')
-ax1.set_title('Test-Loss per Epochs:')
+ax1.set_ylabel('Train-Loss')
+ax1.set_title('Train-Loss per Epochs:')
 
 if GN_allowed == True:
-    ax1.plot(epoch_vec_GN, test_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
+    ax1.plot(epoch_vec_GN, train_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
 
 ax1.legend(loc='upper right')
 
-####Train_loss_time_plot:
-g1, ax2 = plt.subplots(1, 1, figsize=(6, 4))
+####Test_loss_epochs_plot:
+g, ax2 = plt.subplots(1, 1, figsize=(6, 4))
 
-ax2.plot(time_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
-ax2.set_xlabel('Time (in seconds)')
-ax2.set_ylabel('Train-Loss')
-ax2.set_title('Train-Loss per Time:')
+ax2.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
+ax2.set_xlabel('Epochs')
+ax2.set_ylabel('Test-Loss')
+ax2.set_title('Test-Loss per Epochs:')
 
 if GN_allowed == True:
-    ax2.plot(time_vec_GN, train_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
+    ax2.plot(epoch_vec_GN, test_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
 
 ax2.legend(loc='upper right')
 
-####Test_loss_time_plot:
-g2, ax3 = plt.subplots(1, 1, figsize=(6, 4))
+####Train_loss_time_plot:
+g1, ax3 = plt.subplots(1, 1, figsize=(6, 4))
 
-ax3.plot(time_vec_SGD, test_loss_vec_SGD, 'ro', label='SGD', linewidth=1.2)
+ax3.plot(time_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
 ax3.set_xlabel('Time (in seconds)')
-ax3.set_ylabel('Test-Loss')
-ax3.set_title('Test-Loss per Time:')
+ax3.set_ylabel('Train-Loss')
+ax3.set_title('Train-Loss per Time:')
 
 if GN_allowed == True:
-    ax3.plot(time_vec_GN, test_loss_vec_GN, 'bo', label='GN', linewidth=1.2)
+    ax3.plot(time_vec_GN, train_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
 
 ax3.legend(loc='upper right')
+
+####Test_loss_time_plot:
+g2, ax4 = plt.subplots(1, 1, figsize=(6, 4))
+
+ax4.plot(time_vec_SGD, test_loss_vec_SGD, 'ro', label='SGD', linewidth=1.2)
+ax4.set_xlabel('Time (in seconds)')
+ax4.set_ylabel('Test-Loss')
+ax4.set_title('Test-Loss per Time:')
+
+if GN_allowed == True:
+    ax4.plot(time_vec_GN, test_loss_vec_GN, 'bo', label='GN', linewidth=1.2)
+
+ax4.legend(loc='upper right')
 
 if plotting == True:
     plt.show()
