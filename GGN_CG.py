@@ -79,7 +79,7 @@ x_test, y_test = toy_data_generator(test_size, 0, False, max_num_outliers)
 
 
 ##########################
-#Def model loss and model:
+#def. model loss and model:
 ##########################
 
 def model_loss(y_true, y_pred):
@@ -110,7 +110,7 @@ lam = 1
 
 
 ###########
-#Functions:
+#functions:
 ###########
 
 #Funktion für Hesse-Vektor-Produkte ohne davor Gradienten berechnet zu haben:
@@ -236,9 +236,9 @@ def preconditioned_cg_method_complete_GN(GN, x, b, min_steps, precision):
 
 
 
-############
-#OPTIMIZERS:
-############
+##############
+#OPTIMIZATION:
+##############
 
 ###NEW!! das ist der standard_GN_Trainingsstep, bei dem noch Hesse_Vektor_Produkte berechnet werden!
 def train_step_generalized_gauss_newton_Hesse_vec(x, y, lam, update_old):
@@ -574,6 +574,7 @@ https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
 3) CasADi
 4) R-Methode bzw. fastmatvec-Methode implementieren
    ÜBERPRÜFEN OB DAS HASSE-VEKTOR-PRODUKT TATSÄCHLICH DIE HESSE VERWENDET!!!
-5) [optional] optimale Hyperparameter für SGD herausfinden und gegentesten mit
+5) ADAM optimizer gegentesten (konvergiert das schneller?)
+6) [optional] optimale Hyperparameter für SGD herausfinden und gegentesten mit
               optimalen Hyperparametern für GN (z.B. Anzahl Schritte in CG ...)
 '''
