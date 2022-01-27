@@ -415,4 +415,29 @@ def train_step_generalized_gauss_newton_cg(x, y, lam):
 
             ax.legend(loc='upper right')
             plt.show()
+
+
+            # Martens Werte: min_steps = 10, precision = 0.0005
+            def cg_method(jac, x, b, min_steps, precision):
+                r = b - fastmatvec(x, jac, lam)
+                d = r
+                i, k = 0, min_steps
+                phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
+                while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
+                    k = np.maximum(min_steps, int(i/min_steps))
+                    z = fastmatvec(d, jac, lam)
+                    alpha = tf.tensordot(r, r, 1) / tf.tensordot(d, z, 1)
+                    x = x + alpha * d
+                    r_new = r - alpha * z
+                    beta = tf.tensordot(r_new, r_new, 1) / tf.tensordot(r, r, 1)
+                    d = r_new + beta * d
+                    r = r_new
+                    phi_history = np.append(phi_history, np.array(
+                        - 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1))))
+                    if i >= k:
+                        s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
+                    else:
+                        s = k
+                    i += 1
+                return x
 '''

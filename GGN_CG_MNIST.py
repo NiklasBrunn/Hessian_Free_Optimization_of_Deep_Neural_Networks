@@ -10,9 +10,9 @@ tf.get_logger().setLevel(logging.ERROR)
 
 tf.random.set_seed(11)
 
-data_size = 60000
-batch_size = 1000
-epochs = 5
+data_size = 60
+batch_size = 10
+epochs = 2
 model_neurons_mnist = [784, 800, 10]
 
 def mnist_data_generator():
@@ -21,7 +21,7 @@ def mnist_data_generator():
     test_x = tf.reshape(test_x, [10000, 784])/255
     train_y = tf.one_hot(train_y, depth = 10)
     test_y = tf.one_hot(test_y, depth = 10)
-    return (train_x[0:data_size, :], train_y[0:data_size, :]), (test_x[0:data_size, :], test_y[0:data_size, :])
+    return (train_x[0:data_size, :], train_y[0:data_size, :]), (test_x, test_y)
 
 (train_x, train_y), (test_x, test_y) = mnist_data_generator()
 
@@ -188,9 +188,9 @@ for epoch in range(epochs):
         start = i * batch_size
         end = start + batch_size
 
-#        lam, update_old = train_step_generalized_gauss_newton(
-#            train_x[start: end], train_y[start: end], lam, update_old)
-        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.1)
+        lam, update_old = train_step_generalized_gauss_newton(
+            train_x[start: end], train_y[start: end], lam, update_old)
+#        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.1)
 
 #elapsed = time.time() - t
 
