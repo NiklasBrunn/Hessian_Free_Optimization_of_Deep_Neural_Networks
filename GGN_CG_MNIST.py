@@ -48,7 +48,7 @@ def fastmatvec_new(x_batch, y_batch, v, lam):
     v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
                                   for i, v in enumerate(GGN_times_v)], axis=0))
 #    print(v_new/batch_size + lam * v)
-    return v_new/batch_size + lam * v
+    return v_new / batch_size + lam * v
 
 
 input_layer_mnist = tf.keras.Input(shape=(model_neurons_mnist[0]))
