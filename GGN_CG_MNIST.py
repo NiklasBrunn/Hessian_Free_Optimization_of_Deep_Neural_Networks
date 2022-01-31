@@ -34,9 +34,9 @@ def model_loss_mnist(y_true, y_pred):
 def fastmatvec_new(x_batch, y_batch, v, lam):
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
-    with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc: #step1
-        y_pred = model(x_batch)                                                   #step1
-    Jacnet_times_vec = acc.jvp(y_pred)                                                     #step1
+    with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
+        y_pred = model(x_batch)
+    Jacnet_times_vec = acc.jvp(y_pred)
     with tf.GradientTape() as tape:
         y_pred = model(x_batch)
         with tf.autodiff.ForwardAccumulator(y_pred, Jacnet_times_vec) as acc1:
@@ -49,6 +49,28 @@ def fastmatvec_new(x_batch, y_batch, v, lam):
                                   for i, v in enumerate(GGN_times_v)], axis=0))
 #    print(v_new/batch_size + lam * v)
     return v_new / batch_size + lam * v
+
+
+
+def fastmatvec_new_faster(x_batch, y_batch, v, lam):
+    v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
+    v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
+
+    with tf.GradientTape() as tape:
+        with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
+            y_pred = model(x_batch)
+            akt_out = tf.nn.softmax(y_pred)
+        Jsoft_v = acc.jvp(y_pred) # Jsoft_v = Jacobi_softmax(bzgl. Netzwerkparams) * v = ...
+        # ... = Jacobi_softmax(bzgl. Netzwerkoutp.) * Jacobi_netz(y_pred = model(x_batch)) * v
+    GGN_times_v = tape.gradient(y_pred, model.trainable_variables,
+                             output_gradients=tf.stop_gradient(Jsoft_v))
+
+    v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
+                                  for i, v in enumerate(GGN_times_v)], axis=0))
+
+    return v_new / batch_size + lam * v
+
+
 
 
 input_layer_mnist = tf.keras.Input(shape=(model_neurons_mnist[0]))

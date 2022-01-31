@@ -161,6 +161,7 @@ def hessappr_vec(v, jac, lam):
 def fastmatvec(x_batch, y_batch, v, lam):
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
+    
     with tf.GradientTape() as tape:
         with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
             y_pred = model(x_batch)
@@ -624,7 +625,7 @@ https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
 
 1) Plots sollen gemittelte Werte mit Auswertungen von ca. 5 verschidenen Random-
    Seeds zeigen
-2) CasADi Auswertung als Vergleich für die schriftliche Ausarbeitung   
+2) CasADi Auswertung als Vergleich für die schriftliche Ausarbeitung
 3) R_OP nochmal wegen den Batches überprüfen ob das so stimmt!!!
 [4) ADAM optimizer gegentesten (konvergiert das schneller?)]
 '''
