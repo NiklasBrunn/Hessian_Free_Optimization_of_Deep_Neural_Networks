@@ -21,7 +21,7 @@ test_size = 500
 batch_size = 100
 epochs = 10
 CG_steps = 10 # minimale Anzahl der Schritte in der CG-Methode.
-model_neurons = [1, 1000, 1000, 1]
+model_neurons = [1, 30, 30, 1]
 num_updates = int(train_size / batch_size)
 
 outliers = False # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert.
@@ -413,7 +413,7 @@ def train_step_gradient_descent(x, y, eta):
 ##########
 
 #Erstellen der Data-Plots:
-f, ((ax0, ax1, ax3, ax5), (ax0, ax2, ax4, ax6)) = plt.subplots(2, 4, figsize=(18, 8))
+f, ((ax0, ax1, ax3, ax5), (ax7, ax2, ax4, ax6)) = plt.subplots(2, 4, figsize=(18, 8))
 
 a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
 ax0.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
@@ -534,8 +534,6 @@ ax0.legend(loc='upper right')
 #######
 
 ####Train_loss_epochs_plot:
-#h, ax1 = plt.subplots(1, 1, figsize=(6, 4))
-
 ax1.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
 ax1.set_xlabel('Epochs')
 ax1.set_ylabel('Train-Loss')
@@ -549,8 +547,6 @@ if GN_allowed == True:
 ax1.legend(loc='upper right')
 
 ####Test_loss_epochs_plot:
-#g, ax2 = plt.subplots(1, 1, figsize=(6, 4))
-
 ax2.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
 ax2.set_xlabel('Epochs')
 ax2.set_ylabel('Test-Loss')
@@ -564,8 +560,6 @@ if GN_allowed == True:
 ax2.legend(loc='upper right')
 
 ####Train_loss_time_plot:
-#g1, ax3 = plt.subplots(1, 1, figsize=(6, 4))
-
 ax3.plot(time_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
 ax3.set_xlabel('Time (in seconds)')
 ax3.set_ylabel('Train-Loss')
@@ -577,8 +571,6 @@ if GN_allowed == True:
 ax3.legend(loc='upper right')
 
 ####Test_loss_time_plot:
-#g2, ax4 = plt.subplots(1, 1, figsize=(6, 4))
-
 ax4.plot(time_vec_SGD, test_loss_vec_SGD, 'ro', label='SGD', linewidth=1.2)
 ax4.set_xlabel('Time (in seconds)')
 ax4.set_ylabel('Test-Loss')
@@ -590,8 +582,6 @@ if GN_allowed == True:
 ax4.legend(loc='upper right')
 
 ####Loss per Epochs GN:
-#g3, ax5 = plt.subplots(1, 1, figsize=(6, 4))
-
 ax5.plot(epoch_vec_GN, train_loss_vec_GN, 'r', label='GN_Train', linewidth=1.2)
 ax5.set_xlabel('Epochs')
 ax5.set_ylabel('Loss')
@@ -603,8 +593,6 @@ if GN_allowed == True:
 ax5.legend(loc='upper right')
 
 ####Loss per Epochs SGD:
-#g4, ax6 = plt.subplots(1, 1, figsize=(6, 4))
-
 ax6.plot(epoch_vec_GN, train_loss_vec_SGD, 'r', label='SGD_Train', linewidth=1.2)
 ax6.set_xlabel('Epochs')
 ax6.set_ylabel('Loss')
@@ -614,6 +602,10 @@ if GN_allowed == True:
     ax6.plot(epoch_vec_GN, test_loss_vec_SGD, 'b', label='SGD_Test', linewidth=1.2)
 
 ax6.legend(loc='upper right')
+
+#placeholder:
+ax7.plot([0], [0], 'r', linewidth=0.1)
+ax7.set_title('placeholder')
 
 
 if plotting == True:

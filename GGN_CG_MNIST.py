@@ -10,10 +10,10 @@ tf.get_logger().setLevel(logging.ERROR)
 
 tf.random.set_seed(11)
 
-data_size = 60
-batch_size = 10
-epochs = 2
-model_neurons_mnist = [784, 128, 10]
+data_size = 60000
+batch_size = 150
+epochs = 10
+model_neurons_mnist = [784, 800, 10]
 
 def mnist_data_generator():
     (train_x, train_y), (test_x, test_y) = mnist.load_data()
@@ -181,7 +181,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
 
 def train_step_gradient_descent(x, y, eta):
-    with tf.GradientTape(persistent=True) as tape:
+    with tf.GradientTape() as tape:
         y_pred = model_mnist(x)
         loss = model_loss_mnist(y, y_pred)
 
@@ -207,12 +207,12 @@ for epoch in range(epochs):
         start = i * batch_size
         end = start + batch_size
 
-        lam, update_old = train_step_generalized_gauss_newton(
-            train_x[start: end], train_y[start: end], lam, update_old)
-#        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.1)
+#        lam, update_old = train_step_generalized_gauss_newton(
+#            train_x[start: end], train_y[start: end], lam, update_old)
+        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.01)
 
 #elapsed = time.time() - t
 
-wrong_classified = np.sum(np.where(np.argmax(test_y, axis=1) - np.argmax(model_mnist.predict(test_x), axis=1) !=0, 1, 0))
+wrong_classified = np.sum(np.where(np.argmax(test_y, axis=1) - np.argmax(tf.nn.softmax(model_mnist.predict(test_x)), axis=1) !=0, 1, 0))
 print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
 print('test accuracy:', (10000 - wrong_classified) / 10000)
