@@ -60,7 +60,7 @@ def fastmatvec_new_faster(x_batch, y_batch, v, lam):
         with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
             y_pred = model(x_batch)
             akt_out = tf.nn.softmax(y_pred)
-        Jsoft_v = acc.jvp(y_pred) # Jsoft_v = Jacobi_softmax(bzgl. Netzwerkparams) * v = ...
+        Jsoft_v = acc.jvp(akt_out) # Jsoft_v = Jacobi_softmax(bzgl. Netzwerkparams) * v = ...
         # ... = Jacobi_softmax(bzgl. Netzwerkoutp.) * Jacobi_netz(y_pred = model(x_batch)) * v
     GGN_times_v = tape.gradient(y_pred, model.trainable_variables,
                              output_gradients=tf.stop_gradient(Jsoft_v))
