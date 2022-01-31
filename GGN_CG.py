@@ -21,23 +21,25 @@ test_size = 500
 batch_size = 100
 epochs = 10
 CG_steps = 10 # minimale Anzahl der Schritte in der CG-Methode.
-model_neurons = [1, 10, 10, 1]
+model_neurons = [1, 1000, 1000, 1]
 num_updates = int(train_size / batch_size)
 
 outliers = False # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert.
 max_num_outliers = 100 # Maximale Anzahl der Outliers im generierten Datensatz.
 
-SGD_allowed = False # wenn True, dann wird SGD-Update performt!
+SGD_allowed = True # wenn True, dann wird SGD-Update performt!
 GN_allowed = True # wenn True, dann wird auch GN-Update nach dem SGD-Update performt!
 gradient_cal = 'alternativ' # kann als 'standard' oder 'alternativ' gesetzt werden!
                           # wenn standard, dann wird der Gradient mit Rückwärts AD durch
                           # die ges. Objektfunktion berechnet, mit alternativ wird
                           # nur die Jacobi bezgl. der Netzwerkparameter berechnet und dann
                           # mit den Residuen multipliziert.
-GN_cal = False # wenn True, dann wird die GN-Matrix vor dem CG-update komplett berechnet,
+GN_cal = 'R_Op' # wenn True, dann wird die GN-Matrix vor dem CG-update komplett berechnet,
               # ansonsten werden im CG-update Matrix-Vektor Produkte berechnet,
               # ohne Verwendung der GN-Matrix!
-plotting = False # wenn True, dann werden die generierten Plots angezeigt!
+              # wenn nicht False oder True dann wird mit dem R-Operator im CG-Verfahren
+              # optimiert
+plotting = True # wenn True, dann werden die generierten Plots angezeigt!
 
 #########################################
 #Data generation (optional mit Outliern):
@@ -153,19 +155,62 @@ def efficient_hessian_vec(v, x, y, theta, lam):
     return mat_vec_res + lam * v
 
 
-def fastmatvec(v, jac, lam):
+def hessappr_vec(v, jac, lam):
     return tf.reduce_mean(tf.linalg.matvec(jac, tf.linalg.matvec(jac, v), transpose_a=True), axis=0) + lam * v
+
+def fastmatvec(x_batch, y_batch, v, lam):
+    v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
+    v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
+    with tf.GradientTape() as tape:
+        with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
+            y_pred = model(x_batch)
+        forward = acc.jvp(y_pred)
+    backward = tape.gradient(y_pred, model.trainable_variables,
+                             output_gradients=tf.stop_gradient(forward))
+
+    v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
+                                  for i, v in enumerate(backward)], axis=0))
+    return v_new/batch_size + lam * v
+
+def preconditioned_cg_method_R_Op(x_batch, y_batch, v, b, min_steps, precision):
+    r = b - fastmatvec(x_batch, y_batch, v, lam) # (A+lam*I) * x
+    y = r / (b ** 2 + lam)
+    d = y
+    i, k = 0, min_steps
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1)))
+    while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
+        k = np.maximum(min_steps, int(i/min_steps))
+        z = fastmatvec(x_batch, y_batch, d, lam)
+        alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
+        v = v + alpha * d
+        r_new = r - alpha * z
+        y_new = r_new / (b ** 2 + lam)
+        beta = tf.tensordot(r_new, y_new, 1) / tf.tensordot(r, y, 1)
+        d = y_new + beta * d
+        r = r_new
+        y = y_new
+        phi_history = np.append(phi_history, np.array(
+            - 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))))
+        if i >= k:
+            s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
+        else:
+            s = k
+        i += 1
+
+    return v
+
+
 
 # Martens Werte: min_steps = 10, precision = 0.0005
 def preconditioned_cg_method(A, x, b, min_steps, precision):
-    r = b - fastmatvec(x, A, lam) # (A+lam*I) * x
+    r = b - hessappr_vec(x, A, lam) # (A+lam*I) * x
     y = r / (b ** 2 + lam)
     d = y
     i, k = 0, min_steps
     phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
     while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
         k = np.maximum(min_steps, int(i/min_steps))
-        z = fastmatvec(d, A, lam)
+        z = hessappr_vec(d, A, lam)
         alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
         x = x + alpha * d
         r_new = r - alpha * z
@@ -300,9 +345,6 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
 
-    #print(fastmatvec(update_old, jac, lam))
-    #print('stop')
-
     if gradient_cal == 'standard':
         # Gradient berechnet durch Jacobi_Vector_Produkt:
         grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
@@ -324,6 +366,8 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
     elif GN_cal == False:
         update = preconditioned_cg_method(jac, update_old, grad_obj, CG_steps, 0.0005)
+    else:
+        update = preconditioned_cg_method_R_Op(x, y, update_old, grad_obj, CG_steps, 0.0005)
 
 
 
@@ -335,8 +379,11 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
     impr = loss - model_loss(y,  model(x))
 
+    #rho = impr / (tf.tensordot(grad_obj, update, 1) +
+    #              tf.tensordot(update, hessappr_vec(update, jac, 0), 1))
+
     rho = impr / (tf.tensordot(grad_obj, update, 1) +
-                  tf.tensordot(update, fastmatvec(update, jac, 0), 1))
+                  tf.tensordot(update, fastmatvec(x, y, update, 0), 1))
 
     if rho > 0.75:
         lam /= 1.5
@@ -366,7 +413,7 @@ def train_step_gradient_descent(x, y, eta):
 ##########
 
 #Erstellen der Data-Plots:
-f, ax0 = plt.subplots(1, 1, figsize=(6, 4))
+f, ((ax0, ax1, ax3, ax5), (ax0, ax2, ax4, ax6)) = plt.subplots(2, 4, figsize=(18, 8))
 
 a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
 ax0.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
@@ -487,7 +534,7 @@ ax0.legend(loc='upper right')
 #######
 
 ####Train_loss_epochs_plot:
-h, ax1 = plt.subplots(1, 1, figsize=(6, 4))
+#h, ax1 = plt.subplots(1, 1, figsize=(6, 4))
 
 ax1.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
 ax1.set_xlabel('Epochs')
@@ -502,7 +549,7 @@ if GN_allowed == True:
 ax1.legend(loc='upper right')
 
 ####Test_loss_epochs_plot:
-g, ax2 = plt.subplots(1, 1, figsize=(6, 4))
+#g, ax2 = plt.subplots(1, 1, figsize=(6, 4))
 
 ax2.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
 ax2.set_xlabel('Epochs')
@@ -517,7 +564,7 @@ if GN_allowed == True:
 ax2.legend(loc='upper right')
 
 ####Train_loss_time_plot:
-g1, ax3 = plt.subplots(1, 1, figsize=(6, 4))
+#g1, ax3 = plt.subplots(1, 1, figsize=(6, 4))
 
 ax3.plot(time_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
 ax3.set_xlabel('Time (in seconds)')
@@ -530,7 +577,7 @@ if GN_allowed == True:
 ax3.legend(loc='upper right')
 
 ####Test_loss_time_plot:
-g2, ax4 = plt.subplots(1, 1, figsize=(6, 4))
+#g2, ax4 = plt.subplots(1, 1, figsize=(6, 4))
 
 ax4.plot(time_vec_SGD, test_loss_vec_SGD, 'ro', label='SGD', linewidth=1.2)
 ax4.set_xlabel('Time (in seconds)')
@@ -543,7 +590,7 @@ if GN_allowed == True:
 ax4.legend(loc='upper right')
 
 ####Loss per Epochs GN:
-g3, ax5 = plt.subplots(1, 1, figsize=(6, 4))
+#g3, ax5 = plt.subplots(1, 1, figsize=(6, 4))
 
 ax5.plot(epoch_vec_GN, train_loss_vec_GN, 'r', label='GN_Train', linewidth=1.2)
 ax5.set_xlabel('Epochs')
@@ -556,7 +603,7 @@ if GN_allowed == True:
 ax5.legend(loc='upper right')
 
 ####Loss per Epochs SGD:
-g4, ax6 = plt.subplots(1, 1, figsize=(6, 4))
+#g4, ax6 = plt.subplots(1, 1, figsize=(6, 4))
 
 ax6.plot(epoch_vec_GN, train_loss_vec_SGD, 'r', label='SGD_Train', linewidth=1.2)
 ax6.set_xlabel('Epochs')
@@ -570,6 +617,7 @@ ax6.legend(loc='upper right')
 
 
 if plotting == True:
+    plt.tight_layout()
     plt.show()
 else:
     print("no plots were generated ...")

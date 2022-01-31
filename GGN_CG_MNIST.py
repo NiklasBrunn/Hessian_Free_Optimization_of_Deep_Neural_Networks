@@ -31,6 +31,25 @@ def model_loss_mnist(y_true, y_pred):
     #return tf.reduce_mean(-tf.math.reduce_sum(y_true * tf.math.log(tf.nn.softmax(y_pred)), axis=1))
     return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_true, y_pred))
 
+def fastmatvec_new(x_batch, y_batch, v, lam):
+    v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
+    v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
+    with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc: #step1
+        y_pred = model(x_batch)                                                   #step1
+    Jacnet_times_vec = acc.jvp(y_pred)                                                     #step1
+    with tf.GradientTape() as tape:
+        y_pred = model(x_batch)
+        with tf.autodiff.ForwardAccumulator(y_pred, Jacnet_times_vec) as acc1:
+            akt_out = tf.nn.softmax(y_pred)
+        Jac_softmax_times_vec = acc1.jvp(akt_out)
+    GGN_times_v = tape.gradient(y_pred, model.trainable_variables,
+                             output_gradients=tf.stop_gradient(Jac_softmax_times_vec))
+
+    v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
+                                  for i, v in enumerate(GGN_times_v)], axis=0))
+#    print(v_new/batch_size + lam * v)
+    return v_new/batch_size + lam * v
+
 
 input_layer_mnist = tf.keras.Input(shape=(model_neurons_mnist[0]))
 layer_1_mnist = tf.keras.layers.Dense(model_neurons_mnist[1], activation='relu')(input_layer_mnist)
