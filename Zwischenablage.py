@@ -441,3 +441,149 @@ def train_step_generalized_gauss_newton_cg(x, y, lam):
                     i += 1
                 return x
 '''
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import tensorflow as tf
+import time
+
+'''
+v = tf.Variable([1., 2.])
+with tf.autodiff.ForwardAccumulator(v, tf.constant([1., 3.])) as acc:
+    with tf.GradientTape() as tape:
+        y = tf.reduce_sum(v ** 3.)
+        backward = tape.gradient(y, v)
+
+print(backward)  # gradient from backprop
+print(acc.jvp(backward))
+
+'''
+train_size = 1500
+test_size = 500
+batch_size = 100
+epochs = 10
+CG_steps = 10
+model_neurons = [1, 10, 10, 1]
+num_updates = int(train_size / batch_size)
+
+tf.random.set_seed(1)
+
+
+def toy_data_generator(size, noise):
+    x = tf.random.normal([size, model_neurons[0]])
+    y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
+    return x, y
+
+
+x_train, y_train = toy_data_generator(train_size, 0.1)
+x_test, y_test = toy_data_generator(test_size, 0)
+
+
+def model_loss(y_true, y_pred):
+    return tf.reduce_mean(0.5 * (y_true - y_pred) ** 2)
+
+
+input_layer = tf.keras.Input(shape=(model_neurons[0],))
+layer_1 = tf.keras.layers.Dense(model_neurons[1], activation='relu')(input_layer)
+layer_2 = tf.keras.layers.Dense(model_neurons[2], activation='relu')(layer_1)
+layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
+
+model = tf.keras.Model(input_layer, layer_3, name='Model')
+
+model.compile(loss=model_loss)
+model.summary()
+
+
+layer_shape = [(model_neurons[i], model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
+bias_shape = [(model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
+param_shape = [x for y in zip(layer_shape, bias_shape) for x in y]
+n_params = [np.prod(s) for s in param_shape]
+ind = np.insert(np.cumsum(n_params), 0, 0)
+update_old = tf.zeros(ind[-1])
+lam = 1
+
+
+def fastmatvec(x_batch, y_batch, v, lam):
+    v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
+    v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
+    with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
+        y_pred = model(x_batch)
+    forward = acc.jvp(y_pred)
+    with tf.GradientTape() as tape:
+        y_pred = model(x_batch)
+    backward = tape.gradient(y_pred, model.trainable_variables,
+                             output_gradients=tf.stop_gradient(forward))
+
+    v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
+                                  for i, v in enumerate(backward)], axis=0))
+#    print(v_new/batch_size + lam * v)
+    return v_new/batch_size + lam * v
+
+
+def preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, precision, lam):
+    r = b - fastmatvec(x_batch, y_batch, v, lam)
+    y = r / (b ** 2 + lam)
+    d = y
+    i, k = 0, min_steps
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1)))
+    while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
+        k = np.maximum(min_steps, int(i/min_steps))
+        z = fastmatvec(x_batch, y_batch, d, lam)
+        alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
+        v = v + alpha * d
+        r_new = r - alpha * z
+        y_new = r_new / (b ** 2 + lam)
+        beta = tf.tensordot(r_new, y_new, 1) / tf.tensordot(r, y, 1)
+        d = y_new + beta * d
+        r = r_new
+        y = y_new
+        phi_history = np.append(phi_history, np.array(
+            - 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))))
+        if i >= k:
+            s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
+        else:
+            s = k
+        i += 1
+    return v
+
+
+def train_step_generalized_gauss_newton(x_batch, y_batch, lam, update_old):
+    with tf.GradientTape(persistent=True) as tape:
+        y_pred = model(x_batch)
+        loss = model_loss(y_batch, y_pred)
+
+    grad_obj = tape.gradient(loss, model.trainable_variables)
+    grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
+                                     for i, g in enumerate(grad_obj)], axis=0))
+
+    update = preconditioned_cg_method(x_batch, y_batch, update_old, grad_obj, CG_steps, 0.0005, lam)
+
+    theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
+
+    theta_new = [p - tf.reshape(u, s)
+                 for (p, u, s) in zip(model.trainable_variables, theta_new, param_shape)]
+
+    model.set_weights(theta_new)
+
+    impr = loss - model_loss(y_batch,  model(x_batch))
+
+    rho = impr / (tf.tensordot(grad_obj, update, 1) +
+                  tf.tensordot(update, fastmatvec(x_batch, y_batch, update, 0), 1))
+
+    if rho > 0.75:
+        lam /= 1.5
+    elif rho < 0.25:
+        lam *= 1.5
+
+    return lam, update
+
+
+# for epoch in range(epochs):
+
+    #    print(model_loss(y_test,  model(x_test)))
+    #    print(model_loss(y_train,  model(x_train)))
+for i in range(num_updates):
+    start = i * batch_size
+    end = start + batch_size
+    lam, update_old = train_step_generalized_gauss_newton(
+        x_train[start: end], y_train[start: end], lam, update_old)
