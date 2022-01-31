@@ -13,7 +13,7 @@ tf.random.set_seed(11)
 data_size = 60
 batch_size = 10
 epochs = 2
-model_neurons_mnist = [784, 800, 10]
+model_neurons_mnist = [784, 128, 10]
 
 def mnist_data_generator():
     (train_x, train_y), (test_x, test_y) = mnist.load_data()

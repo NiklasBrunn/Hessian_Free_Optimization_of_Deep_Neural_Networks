@@ -142,3 +142,27 @@ elapsed = time.time() - t
 print('estimated time for the jacobian and multiplication with v:', elapsed)
 
 print(jac_v)
+
+from sys import path
+path.append(r"/Users/niklasbrunn/Desktop/CasADi_Python/casadi-osx-py39-v3.5.5")
+from casadi import *
+x = MX.sym("x")
+print(jacobian(sin(x),x))
+
+
+def hesse_obj(x, y):
+    theta = model.trainable_variables
+    with tf.GradientTape(persistent=True) as tape2:
+        with tf.GradientTape(persistent=True) as tape1:
+            y_pred = model(x)
+            loss = model_loss(y_pred, y)
+        grad = tape1.gradient(loss, theta)
+        print(grad)
+        grad = tf.concat([tf.reshape(h, [n_params[i], 1])
+                         for i, h in enumerate(grad)], axis=0)
+    hess = tape2.jacobian(grad, theta)
+    #hess = tf.concat([tf.reshape(h, [n_params[i], n_params[i]])
+    #                 for i, h in enumerate(grad)], axis=0)
+    return hess
+
+print('1:', hesse_obj(x_train[0:3, :], y_train[0:3, :]))

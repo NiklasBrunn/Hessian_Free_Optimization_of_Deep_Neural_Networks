@@ -15,19 +15,19 @@ tf.get_logger().setLevel(logging.ERROR)
 ################
 
 Data_Seed = 1
-Model_Seed = 2
+Model_Seed = 1
 train_size = 1500
-test_size = 200
-batch_size = 150
-epochs = 20
+test_size = 500
+batch_size = 100
+epochs = 10
 CG_steps = 10 # minimale Anzahl der Schritte in der CG-Methode.
-model_neurons = [1, 30, 30, 1]
+model_neurons = [1, 10, 10, 1]
 num_updates = int(train_size / batch_size)
 
 outliers = False # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert.
 max_num_outliers = 100 # Maximale Anzahl der Outliers im generierten Datensatz.
 
-SGD_allowed = True # wenn True, dann wird SGD-Update performt!
+SGD_allowed = False # wenn True, dann wird SGD-Update performt!
 GN_allowed = True # wenn True, dann wird auch GN-Update nach dem SGD-Update performt!
 gradient_cal = 'alternativ' # kann als 'standard' oder 'alternativ' gesetzt werden!
                           # wenn standard, dann wird der Gradient mit Rückwärts AD durch
@@ -37,7 +37,7 @@ gradient_cal = 'alternativ' # kann als 'standard' oder 'alternativ' gesetzt werd
 GN_cal = False # wenn True, dann wird die GN-Matrix vor dem CG-update komplett berechnet,
               # ansonsten werden im CG-update Matrix-Vektor Produkte berechnet,
               # ohne Verwendung der GN-Matrix!
-plotting = True # wenn True, dann werden die generierten Plots angezeigt!
+plotting = False # wenn True, dann werden die generierten Plots angezeigt!
 
 #########################################
 #Data generation (optional mit Outliern):
@@ -284,6 +284,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model(x)
         loss = model_loss(y, y_pred)
+        #y_gather = [tf.gather(y_pred, i) for i in range(batch_size)]
 
     res = y_pred - y
     if model_neurons[0] == 1:
@@ -291,9 +292,16 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
     theta = model.trainable_variables
 
+    #grad_net = [tf.concat([tf.reshape(h, [model_neurons[-1], n_params[i]]) for i, h in enumerate(tape.gradient(y_gather[j], theta))], axis=1) for j in range(batch_size)]
+    #print(grad_net)
+    #print('stop')
+
     jac = tape.jacobian(y_pred, theta)
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
+
+    #print(fastmatvec(update_old, jac, lam))
+    #print('stop')
 
     if gradient_cal == 'standard':
         # Gradient berechnet durch Jacobi_Vector_Produkt:
@@ -485,7 +493,8 @@ ax1.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
 ax1.set_xlabel('Epochs')
 ax1.set_ylabel('Train-Loss')
 ax1.set_title('Train-Loss per Epochs:')
-#ax1.set_ylim(-0.005, 0.1)
+ax1.set_ylim(-0.005, 0.1)
+ax1.set_xlim(0.5, epochs)
 
 if GN_allowed == True:
     ax1.plot(epoch_vec_GN, train_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
@@ -499,7 +508,8 @@ ax2.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
 ax2.set_xlabel('Epochs')
 ax2.set_ylabel('Test-Loss')
 ax2.set_title('Test-Loss per Epochs:')
-#ax2.set_ylim(-0.005, 0.1)
+ax2.set_ylim(-0.005, 0.1)
+ax2.set_xlim(0.5, epochs)
 
 if GN_allowed == True:
     ax2.plot(epoch_vec_GN, test_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
