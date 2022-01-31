@@ -622,13 +622,9 @@ else:
 '''
 https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
 
-1) Epochen (x-Achse) / Time (y-Achse) - Plot für die Modelle hinzufügen
-2) Plots sollen gemittelte Werte mit Auswertungen von ca. 5 verschidenen Random-
+1) Plots sollen gemittelte Werte mit Auswertungen von ca. 5 verschidenen Random-
    Seeds zeigen
-3) CasADi
-4) R-Methode bzw. fastmatvec-Methode implementieren
-   ÜBERPRÜFEN OB DAS HASSE-VEKTOR-PRODUKT TATSÄCHLICH DIE HESSE VERWENDET!!!
-5) ADAM optimizer gegentesten (konvergiert das schneller?)
-6) [optional] optimale Hyperparameter für SGD herausfinden und gegentesten mit
-              optimalen Hyperparametern für GN (z.B. Anzahl Schritte in CG ...)
+2) CasADi Auswertung als Vergleich für die schriftliche Ausarbeitung   
+3) R_OP nochmal wegen den Batches überprüfen ob das so stimmt!!!
+[4) ADAM optimizer gegentesten (konvergiert das schneller?)]
 '''
