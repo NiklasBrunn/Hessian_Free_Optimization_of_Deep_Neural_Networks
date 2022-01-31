@@ -605,7 +605,7 @@ ax6.legend(loc='upper right')
 
 #placeholder:
 ax7.plot([0], [0], 'r', linewidth=0.1)
-ax7.set_title('placeholder')
+ax7.set_title('empty plot')
 
 
 if plotting == True:
