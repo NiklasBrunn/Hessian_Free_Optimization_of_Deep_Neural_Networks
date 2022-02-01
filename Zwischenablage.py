@@ -613,3 +613,159 @@ def cg_method(jac, jac_softmax, x, b, min_steps, precision):
         i += 1
     return x
 '''
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import tensorflow as tf
+import time
+from keras.datasets import mnist
+
+train_size = 60000
+test_size = 10000
+batch_size = 250
+epochs = 100
+CG_steps = 10
+num_updates = int(train_size / batch_size)
+
+tf.random.set_seed(13)
+
+
+def mnist_data_generator():
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+    x_train = x_train.reshape((len(x_train), 28, 28, 1)) / 255.
+    x_test = x_test.reshape((len(x_test), 28, 28, 1)) / 255.
+    y_train = tf.one_hot(y_train[:train_size], depth=10)
+    y_test = tf.one_hot(y_test[:test_size], depth=10)
+
+    return x_train[:train_size], y_train, x_test[:test_size], y_test
+
+
+x_train, y_train, x_test, y_test = mnist_data_generator()
+
+
+def model_loss(y_true, y_pred):
+    return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_true, y_pred))
+
+
+inputs = tf.keras.Input(shape=(28, 28, 1))
+x = tf.keras.layers.Conv2D(16, (3, 3),
+                           strides=(2, 2), padding="same", activation='relu')(inputs)
+x = tf.keras.layers.Conv2D(32, (3, 3), strides=(2, 2), padding="same", activation='relu')(x)
+x = tf.keras.layers.Conv2D(64, (3, 3), strides=(2, 2), activation='relu')(x)
+x = tf.keras.layers.Flatten()(x)
+x = tf.keras.layers.Dense(64, activation='relu')(x)
+outputs = tf.keras.layers.Dense(10)(x)
+
+model = tf.keras.Model(inputs, outputs)
+
+model.compile(loss=model_loss)
+model.summary()
+
+param_shape = [tf.shape(t) for t in model.trainable_variables]
+n_params = [np.prod(s) for s in param_shape]
+ind = np.insert(np.cumsum(n_params), 0, 0)
+update_old = tf.zeros(ind[-1])
+lam = 1
+
+
+def fastmatvec(x_batch, y_batch, v, lam):
+    v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
+    v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
+    with tf.GradientTape() as tape:
+        with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
+            y_pred = model(x_batch)
+            akt_out = tf.nn.softmax(y_pred)
+        HJv = acc.jvp(akt_out)
+    J_tHJv = tape.gradient(y_pred, model.trainable_variables,
+                           output_gradients=tf.stop_gradient(HJv))
+
+    v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
+                                  for i, v in enumerate(J_tHJv)], axis=0))
+    return v_new / batch_size + lam * v
+
+
+def preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, precision, lam):
+    r = b - fastmatvec(x_batch, y_batch, v, lam)
+    y = r / (b ** 2 + lam)
+    d = y
+    i, s, k = 0, 0, min_steps
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1)))
+    while i <= k or s >= precision*k or phi_history[-1] >= 0:
+        k = np.maximum(min_steps, int(i/min_steps))
+        z = fastmatvec(x_batch, y_batch, d, lam)
+        alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
+        v = v + alpha * d
+        r_new = r - alpha * z
+        y_new = r_new / (b ** 2 + lam)
+        beta = tf.tensordot(r_new, y_new, 1) / tf.tensordot(r, y, 1)
+        d = y_new + beta * d
+        r = r_new
+        y = y_new
+        phi_history = np.append(phi_history, np.array(
+            - 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))))
+        if i >= k:
+            s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
+        else:
+            s = k
+        i += 1
+    return v
+
+
+def train_step_generalized_gauss_newton(x_batch, y_batch, lam, update_old):
+    with tf.GradientTape(persistent=True) as tape:
+        y_pred = model(x_batch)
+        loss = model_loss(y_batch, y_pred)
+
+    grad_obj = tape.gradient(loss, model.trainable_variables)
+    grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
+                                     for i, g in enumerate(grad_obj)], axis=0))
+
+    update = preconditioned_cg_method(x_batch, y_batch, update_old,
+                                      grad_obj, CG_steps, 0.0005, lam)
+
+    theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
+
+    theta_new = [p - tf.reshape(u, s)
+                 for (p, u, s) in zip(model.trainable_variables, theta_new, param_shape)]
+
+    model.set_weights(theta_new)
+
+    impr = loss - model_loss(y_batch,  model(x_batch))
+
+    rho = impr / (tf.tensordot(grad_obj, update, 1) +
+                  tf.tensordot(update, fastmatvec(x_batch, y_batch, update, 0), 1))
+
+    if rho > 0.75:
+        lam /= 1.5
+    elif rho < 0.25:
+        lam *= 1.5
+
+    return lam, update
+
+
+error_old = 10000
+for epoch in range(epochs):
+
+    error_test = np.sum(np.where(np.argmax(y_test, axis=1) -
+                                 np.argmax(tf.nn.softmax(model.predict(x_test)), axis=1) != 0, 1, 0))
+    error_train = np.sum(np.where(np.argmax(y_train, axis=1) -
+                                  np.argmax(tf.nn.softmax(model.predict(x_train)), axis=1) != 0, 1, 0))
+    print('Epoch {}/{}. Loss on test data: {:.5f}. Accuracy: Test {:.5f} ({}), Train {:.5f} ({})'.format(epoch +
+                                                                                                         1, epochs, np.array(model_loss(y_test, model(x_test))),  1-error_test/test_size, error_test, 1-error_train/train_size, error_train))
+    tic = time.time()
+    for i in range(num_updates):
+        #        error_new = np.sum(np.where(np.argmax(y_test, axis=1) -
+        #                                    np.argmax(tf.nn.softmax(model.predict(x_test)), axis=1) != 0, 1, 0))
+        #        if error_new < error_old:
+        #            print('Loss on test data: {:.5f}. Wrong classified: {}'.format(
+        #                np.array(model_loss(y_test, model(x_test))), error_new))
+        #            error_old = error_new
+        start = i * batch_size
+        end = start + batch_size
+        lam, update_old = train_step_generalized_gauss_newton(
+            x_train[start: end], y_train[start: end], lam, update_old)
+    elapsed = time.time() - tic
+
+    print('Time elapsed: {:.5f}'.format(elapsed))
+
+print(error_old)
