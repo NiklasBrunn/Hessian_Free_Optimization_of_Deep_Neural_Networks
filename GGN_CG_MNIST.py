@@ -15,11 +15,12 @@ Data_Seed = 1
 Model_Seed = 1
 data_size = 60000
 batch_size = 300
-epochs = 20
+epochs = 25
+CG_steps = 3
 model_neurons = [784, 800, 10]
 fmv_version = 3 # options are 1, 2, 3 (gibt an welche fastmatvec Funktion benutzt wird)
 train_method = 'CG_R_Op' # options are: 'SGD', 'CG_naiv', 'CG_R_Op'
-Net = 'CNN' # options are 'Dense', 'CNN'
+Net = 'Dense' # options are 'Dense', 'CNN'
 
 
 ####################
@@ -250,7 +251,7 @@ def train_step_generalized_gauss_newton_R_Op(x, y, lam, update_old):
     grad_obj = tape.gradient(loss, theta)
     grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
 
-    update = preconditioned_cg_method_R_Op(update_old, x, y, grad_obj, 10, 0.0005)
+    update = preconditioned_cg_method_R_Op(update_old, x, y, grad_obj, CG_steps, 0.0005)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
@@ -297,7 +298,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     grad_obj = tape.gradient(loss, theta)
     grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
 
-    update = preconditioned_cg_method(jac, jac_softmax, update_old, grad_obj, 10, 0.0005)
+    update = preconditioned_cg_method(jac, jac_softmax, update_old, grad_obj, CG_steps, 0.0005)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
@@ -339,11 +340,17 @@ num_updates = int(data_size / batch_size)
 #training:
 ##########
 #t = time.time()
+error_old = 100000
 for epoch in range(epochs):
+    train_loss = np.array(model_loss(y_train, model.predict(x_train)))
+    print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
+                                                               1).zfill(len(str(epochs))), epochs, train_loss))
     for i in range(num_updates):
-        test_loss = np.array(model_loss(y_test, model.predict(x_test)))
-        print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
-                                                                   1).zfill(len(str(epochs))), epochs, test_loss))
+        error_new = np.array(model_loss(y_test, model.predict(x_test)))
+        if error_new < error_old:
+            print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
+                                                                       1).zfill(len(str(epochs))), epochs, error_new))
+            error_old = error_new
 
         start = i * batch_size
         end = start + batch_size
@@ -356,6 +363,9 @@ for epoch in range(epochs):
             elapsed = time.time() - t
             print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
                                                               1).zfill(len(str(epochs))), epochs, elapsed))
+            wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) - np.argmax(tf.nn.softmax(model.predict(x_test)), axis=1) !=0, 1, 0))
+            print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
+
         elif train_method == 'SGD':
             #standard SGD.
             t = time.time()
@@ -363,6 +373,9 @@ for epoch in range(epochs):
             elapsed = time.time() - t
             print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, elapsed))
+            wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) - np.argmax(tf.nn.softmax(model.predict(x_test)), axis=1) !=0, 1, 0))
+            print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
+
         else:
             #fastmatvec with R_Op.
             t = time.time()
@@ -371,17 +384,16 @@ for epoch in range(epochs):
             elapsed = time.time() - t
             print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, elapsed))
+            wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) - np.argmax(tf.nn.softmax(model.predict(x_test)), axis=1) !=0, 1, 0))
+            print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
 
 
 #elapsed = time.time() - t
-
+print('test accuracy:', (10000 - wrong_classified) / 10000)
 
 ########################
 #plots and informations:
 ########################
-wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) - np.argmax(tf.nn.softmax(model.predict(x_test)), axis=1) !=0, 1, 0))
-print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
-print('test accuracy:', (10000 - wrong_classified) / 10000)
 
 
 #######
