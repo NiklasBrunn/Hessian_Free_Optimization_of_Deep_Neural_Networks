@@ -161,7 +161,7 @@ def hessappr_vec(v, jac, lam):
 def fastmatvec(x_batch, y_batch, v, lam):
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
-    
+
     with tf.GradientTape() as tape:
         with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
             y_pred = model(x_batch)
@@ -177,9 +177,9 @@ def preconditioned_cg_method_R_Op(x_batch, y_batch, v, b, min_steps, precision):
     r = b - fastmatvec(x_batch, y_batch, v, lam) # (A+lam*I) * x
     y = r / (b ** 2 + lam)
     d = y
-    i, k = 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1)))
-    while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
+    i, s, k = 0, 0, min_steps
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
+    while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = fastmatvec(x_batch, y_batch, d, lam)
         alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
@@ -207,9 +207,9 @@ def preconditioned_cg_method(A, x, b, min_steps, precision):
     r = b - hessappr_vec(x, A, lam) # (A+lam*I) * x
     y = r / (b ** 2 + lam)
     d = y
-    i, k = 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
-    while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
+    i, s, k = 0, 0, min_steps
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
+    while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = hessappr_vec(d, A, lam)
         alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
@@ -236,9 +236,9 @@ def preconditioned_cg_method_hess(v, b, min_steps, precision, xin, yin, theta):
     r = b - efficient_hessian_vec(v, xin, yin, theta, lam)
     y = r / (b ** 2 + lam)
     d = y
-    i, k = 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1)))
-    while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
+    i, s, k = 0, 0, min_steps
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
+    while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = efficient_hessian_vec(d, xin, yin, theta, lam)
         alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
@@ -264,9 +264,9 @@ def preconditioned_cg_method_complete_GN(GN, x, b, min_steps, precision):
     r = b - (tf.linalg.matvec(GN, x) + lam * x)
     y = r / (b ** 2 + lam)
     d = y
-    i, k = 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1)))
-    while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
+    i, s, k = 0, 0, min_steps
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
+    while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = tf.linalg.matvec(GN, d) + lam * d
         alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
