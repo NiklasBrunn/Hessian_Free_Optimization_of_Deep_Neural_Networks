@@ -13,7 +13,7 @@ tf.random.set_seed(1)
 data_size = 60000
 batch_size = 200
 epochs = 10
-model_neurons_mnist = [784, 800, 10]
+model_neurons = [784, 800, 10]
 
 def mnist_data_generator():
     (train_x, train_y), (test_x, test_y) = mnist.load_data()
@@ -26,7 +26,7 @@ def mnist_data_generator():
 (train_x, train_y), (test_x, test_y) = mnist_data_generator()
 
 
-def model_loss_mnist(y_true, y_pred):
+def model_loss(y_true, y_pred):
     #return tf.reduce_mean(-tf.math.reduce_sum(y_true * tf.math.log(tf.nn.softmax(y_pred)), axis=0)) #Loss hiermit viel besser, obwohl so nicht gedacht?!?
     #return tf.reduce_mean(-tf.math.reduce_sum(y_true * tf.math.log(tf.nn.softmax(y_pred)), axis=1))
     return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_true, y_pred))
@@ -42,15 +42,15 @@ def fastmatvec_naiv(v, jac_net, jac_softmax, lam):
 def fastmatvec_V1(x_batch, y_batch, v, lam):
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
-    with tf.autodiff.ForwardAccumulator(model_mnist.trainable_variables, v_new) as acc:
-        y_pred = model_mnist(x_batch)
+    with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
+        y_pred = model(x_batch)
     Jacnet_times_vec = acc.jvp(y_pred)
     with tf.GradientTape() as tape:
-        y_pred = model_mnist(x_batch)
+        y_pred = model(x_batch)
         with tf.autodiff.ForwardAccumulator(y_pred, Jacnet_times_vec) as acc1:
             akt_out = tf.nn.softmax(y_pred)
         Jac_softmax_times_vec = acc1.jvp(akt_out)
-    GGN_times_v = tape.gradient(y_pred, model_mnist.trainable_variables,
+    GGN_times_v = tape.gradient(y_pred, model.trainable_variables,
                              output_gradients=tf.stop_gradient(Jac_softmax_times_vec))
 
     v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
@@ -64,12 +64,12 @@ def fastmatvec_V2(x_batch, y_batch, v, lam):
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
 
     with tf.GradientTape() as tape:
-        with tf.autodiff.ForwardAccumulator(model_mnist.trainable_variables, v_new) as acc:
-            y_pred = model_mnist(x_batch)
+        with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
+            y_pred = model(x_batch)
             akt_out = tf.nn.softmax(y_pred)
         Jsoft_v = acc.jvp(akt_out) # Jsoft_v = Jacobi_softmax(bzgl. Netzwerkparams) * v = ...
-        # ... = Jacobi_softmax(bzgl. Netzwerkoutp.) * Jacobi_netz(y_pred = model_mnist(x_batch)) * v
-    GGN_times_v = tape.gradient(y_pred, model_mnist.trainable_variables,
+        # ... = Jacobi_softmax(bzgl. Netzwerkoutp.) * Jacobi_netz(y_pred = model(x_batch)) * v
+    GGN_times_v = tape.gradient(y_pred, model.trainable_variables,
                              output_gradients=tf.stop_gradient(Jsoft_v))
 
     v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
@@ -83,11 +83,11 @@ def fastmatvec_V3(x_batch, y_batch, v, lam):
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
 
     with tf.GradientTape() as tape:
-        with tf.autodiff.ForwardAccumulator(model_mnist.trainable_variables, v_new) as acc:
-            y_pred = model_mnist(x_batch)
+        with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
+            y_pred = model(x_batch)
         Jnet_v = acc.jvp(y_pred)
         akt_out = tf.nn.softmax(y_pred)
-    GGN_times_v = tape.gradient(akt_out, model_mnist.trainable_variables,
+    GGN_times_v = tape.gradient(akt_out, model.trainable_variables,
                              output_gradients=tf.stop_gradient(Jnet_v))
 
     v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
@@ -98,18 +98,18 @@ def fastmatvec_V3(x_batch, y_batch, v, lam):
 
 
 
-input_layer_mnist = tf.keras.Input(shape=(model_neurons_mnist[0]))
-layer_1_mnist = tf.keras.layers.Dense(model_neurons_mnist[1], activation='relu')(input_layer_mnist)
-layer_2_mnist = tf.keras.layers.Dense(model_neurons_mnist[2])(layer_1_mnist)
+input_layer = tf.keras.Input(shape=(model_neurons[0]))
+layer_1 = tf.keras.layers.Dense(model_neurons[1], activation='relu')(input_layer)
+layer_2 = tf.keras.layers.Dense(model_neurons[2])(layer_1)
 
-model_mnist = tf.keras.Model(input_layer_mnist, layer_2_mnist, name='Model')
+model = tf.keras.Model(input_layer, layer_2, name='Model')
 
-model_mnist.compile(loss=model_loss_mnist)
-model_mnist.summary()
+model.compile(loss=model_loss)
+model.summary()
 
 
-layer_shape = [(model_neurons_mnist[i], model_neurons_mnist[i+1]) for i in range(np.shape(model_neurons_mnist)[0]-1)]
-bias_shape = [(model_neurons_mnist[i+1]) for i in range(np.shape(model_neurons_mnist)[0]-1)]
+layer_shape = [(model_neurons[i], model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
+bias_shape = [(model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
 param_shape = [x for y in zip(layer_shape, bias_shape) for x in y]
 n_params = [np.prod(s) for s in param_shape]
 ind = np.insert(np.cumsum(n_params), 0, 0)
@@ -202,9 +202,9 @@ def preconditioned_cg_method_R_Op(v, x_batch, y_batch, b, min_steps, precision):
 
 
 def train_step_generalized_gauss_newton_R_Op(x, y, lam, update_old):
-    theta = model_mnist.trainable_variables
+    theta = model.trainable_variables
     with tf.GradientTape() as tape:
-        loss = model_loss_mnist(y, model_mnist(x))
+        loss = model_loss(y, model(x))
     grad_obj = tape.gradient(loss, theta)
     grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
 
@@ -214,9 +214,9 @@ def train_step_generalized_gauss_newton_R_Op(x, y, lam, update_old):
 
     theta_new = [p - tf.reshape(u, s) for (p, u, s) in zip(theta, theta_new, param_shape)]
 
-    model_mnist.set_weights(theta_new)
+    model.set_weights(theta_new)
 
-    impr = loss - model_loss_mnist(y,  model_mnist(x))
+    impr = loss - model_loss(y,  model(x))
 
 #    rho = impr / (tf.tensordot(grad_obj, update, 1) +
 #                  tf.tensordot(update, fastmatvec_V1(x, y, update, 0), 1))
@@ -238,22 +238,22 @@ def train_step_generalized_gauss_newton_R_Op(x, y, lam, update_old):
 
 def train_step_generalized_gauss_newton(x, y, lam, update_old):
     with tf.GradientTape(persistent=True) as tape:
-        y_pred = model_mnist(x)
+        y_pred = model(x)
         akt_out = tf.nn.softmax(y_pred)
-        loss = model_loss_mnist(y, y_pred)
+        loss = model_loss(y, y_pred)
 
     #res = y_pred - y
     #if model_neurons[0] == 1:
     #    res = tf.reshape(res, (batch_size, 1, 1))
     #res = tf.reshape(res, (batch_size, 10, 1))
 
-    theta = model_mnist.trainable_variables
+    theta = model.trainable_variables
 
     jac_softmax = tape.batch_jacobian(akt_out, y_pred)
 
 
     jac = tape.jacobian(y_pred, theta)
-    jac = tf.concat([tf.reshape(h, [batch_size, model_neurons_mnist[-1], n_params[i]])
+    jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
 
     grad_obj = tape.gradient(loss, theta)
@@ -270,9 +270,9 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
     theta_new = [p - tf.reshape(u, s) for (p, u, s) in zip(theta, theta_new, param_shape)]
 
-    model_mnist.set_weights(theta_new)
+    model.set_weights(theta_new)
 
-    impr = loss - model_loss_mnist(y,  model_mnist(x))
+    impr = loss - model_loss(y,  model(x))
 
     rho = impr / (tf.tensordot(grad_obj, update, 1) +
                   tf.tensordot(update, fastmatvec_naiv(update, jac, jac_softmax, 0), 1))
@@ -288,15 +288,15 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
 def train_step_gradient_descent(x, y, eta):
     with tf.GradientTape() as tape:
-        y_pred = model_mnist(x)
-        loss = model_loss_mnist(y, y_pred)
+        y_pred = model(x)
+        loss = model_loss(y, y_pred)
 
-    theta = model_mnist.trainable_variables
+    theta = model.trainable_variables
     grad_loss = tape.gradient(loss, theta)
 
     update = [tf.constant(eta) * g for g in grad_loss]
 
-    model_mnist.set_weights([p - u for (p, u) in zip(theta, update)])
+    model.set_weights([p - u for (p, u) in zip(theta, update)])
 
 
 num_updates = int(data_size / batch_size)
@@ -305,7 +305,7 @@ num_updates = int(data_size / batch_size)
 #t = time.time()
 for epoch in range(epochs):
     for i in range(num_updates):
-        test_loss = np.array(model_loss_mnist(test_y, model_mnist.predict(test_x)))
+        test_loss = np.array(model_loss(test_y, model.predict(test_x)))
         print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
                                                                    1).zfill(len(str(epochs))), epochs, test_loss))
 
@@ -337,6 +337,6 @@ for epoch in range(epochs):
 
 #elapsed = time.time() - t
 
-wrong_classified = np.sum(np.where(np.argmax(test_y, axis=1) - np.argmax(tf.nn.softmax(model_mnist.predict(test_x)), axis=1) !=0, 1, 0))
+wrong_classified = np.sum(np.where(np.argmax(test_y, axis=1) - np.argmax(tf.nn.softmax(model.predict(test_x)), axis=1) !=0, 1, 0))
 print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
 print('test accuracy:', (10000 - wrong_classified) / 10000)
