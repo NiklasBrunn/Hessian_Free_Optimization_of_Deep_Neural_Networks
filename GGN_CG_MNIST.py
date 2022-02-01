@@ -17,7 +17,7 @@ data_size = 60000
 batch_size = 300
 epochs = 20
 model_neurons = [784, 800, 10]
-fmv_version = 2 # options are 1, 2, 3 (gibt an welche fastmatvec Funktion benutzt wird)
+fmv_version = 3 # options are 1, 2, 3 (gibt an welche fastmatvec Funktion benutzt wird)
 train_method = 'CG_R_Op' # options are: 'SGD', 'CG_naiv', 'CG_R_Op'
 Net = 'CNN' # options are 'Dense', 'CNN'
 
@@ -137,7 +137,6 @@ def fastmatvec_V2(x_batch, y_batch, v, lam):
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
 
-    t = time.time()
     with tf.GradientTape() as tape:
         with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
             y_pred = model(x_batch)
@@ -145,8 +144,6 @@ def fastmatvec_V2(x_batch, y_batch, v, lam):
         Jsoft_v = acc.jvp(akt_out)
     GGN_times_v = tape.gradient(y_pred, model.trainable_variables,
                              output_gradients=tf.stop_gradient(Jsoft_v))
-    elapsed = time.time() - t
-    print('FMV Berechneung:', elapsed)
 
     v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
                                   for i, v in enumerate(GGN_times_v)], axis=0))
@@ -156,13 +153,9 @@ def fastmatvec_V2(x_batch, y_batch, v, lam):
 # u := J_Net * v mit Forwarddiff
 # (J_Softmax(Net))' * u mit Backwarddiff
 def fastmatvec_V3(x_batch, y_batch, v, lam):
-    #t = time.time()
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
-    #elapsed = time.time() - t
-    #print('Liste 1:', elapsed)
 
-    t = time.time()
     with tf.GradientTape() as tape:
         with tf.autodiff.ForwardAccumulator(model.trainable_variables, v_new) as acc:
             y_pred = model(x_batch)
@@ -170,15 +163,9 @@ def fastmatvec_V3(x_batch, y_batch, v, lam):
         akt_out = tf.nn.softmax(y_pred)
     GGN_times_v = tape.gradient(akt_out, model.trainable_variables,
                              output_gradients=tf.stop_gradient(Jnet_v))
-    elapsed = time.time() - t
-    print('FMV Berechneung:', elapsed)
 
-
-    #t = time.time()
     v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
                                   for i, v in enumerate(GGN_times_v)], axis=0))
-    #elapsed = time.time() - t
-    #print('Liste 2:', elapsed)
     return v_new / batch_size + lam * v
 
 
