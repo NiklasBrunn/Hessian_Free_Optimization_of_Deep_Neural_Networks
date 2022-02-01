@@ -15,9 +15,10 @@ Data_Seed = 1
 Model_Seed = 1
 data_size = 60000
 batch_size = 200
-epochs = 10
+epochs = 200
 model_neurons = [784, 800, 10]
-
+fmv_version = 3 # options are 1, 2, 3 (gibt an welche fastmatvec Funktion benutzt wird)
+train_method = 'CG_R_Op' # options are: 'SGD', 'CG_naiv', 'CG_R_Op'
 
 ####################
 #loading MNIST data:
@@ -54,9 +55,8 @@ model.compile(loss=model_loss)
 model.summary()
 
 
-layer_shape = [(model_neurons[i], model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
-bias_shape = [(model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
-param_shape = [x for y in zip(layer_shape, bias_shape) for x in y]
+
+param_shape = [np.shape(t) for t in model.trainable_variables]
 n_params = [np.prod(s) for s in param_shape]
 ind = np.insert(np.cumsum(n_params), 0, 0)
 update_old = tf.zeros(ind[-1])
@@ -170,18 +170,27 @@ def preconditioned_cg_method(A, B, x, b, min_steps, precision):
 
 # preconditioned_cg_method for every other fastmatvec function using the R-Op.
 def preconditioned_cg_method_R_Op(v, x_batch, y_batch, b, min_steps, precision):
-    #r = b - fastmatvec_V1(x_batch, y_batch, v, lam)
-    #r = b - fastmatvec_V2(x_batch, y_batch, v, lam)
-    r = b - fastmatvec_V3(x_batch, y_batch, v, lam)
+    if fmv_version == 1:
+        r = b - fastmatvec_V1(x_batch, y_batch, v, lam)
+    elif fmv_version == 2:
+        r = b - fastmatvec_V2(x_batch, y_batch, v, lam)
+    else:
+        r = b - fastmatvec_V3(x_batch, y_batch, v, lam)
+
     y = r / (b ** 2 + lam)
     d = y
-    i, k = 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1)))
-    while (i > k and phi_history[-1] < 0 and s < precision*k) == False:
+    i, s, k = 0, 0, min_steps
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
+    while i <= k or s >= precision*k or phi_history[-1] >= 0:
+        print(s, precision*k, phi_history[-1] >= 0)
         k = np.maximum(min_steps, int(i/min_steps))
-        #z = fastmatvec_V1(x_batch, y_batch, d, lam)
-        #z = fastmatvec_V2(x_batch, y_batch, d, lam)
-        z = fastmatvec_V3(x_batch, y_batch, d, lam)
+        if fmv_version == 1:
+            z = fastmatvec_V1(x_batch, y_batch, d, lam)
+        elif fmv_version == 2:
+            z = fastmatvec_V2(x_batch, y_batch, d, lam)
+        else:
+            z = fastmatvec_V3(x_batch, y_batch, d, lam)
+
         alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
         v = v + alpha * d
         r_new = r - alpha * z
@@ -221,14 +230,15 @@ def train_step_generalized_gauss_newton_R_Op(x, y, lam, update_old):
 
     impr = loss - model_loss(y,  model(x))
 
-#    rho = impr / (tf.tensordot(grad_obj, update, 1) +
-#                  tf.tensordot(update, fastmatvec_V1(x, y, update, 0), 1))
-
-#    rho = impr / (tf.tensordot(grad_obj, update, 1) +
-#                  tf.tensordot(update, fastmatvec_V2(x, y, update, 0), 1))
-
-    rho = impr / (tf.tensordot(grad_obj, update, 1) +
-                  tf.tensordot(update, fastmatvec_V3(x, y, update, 0), 1))
+    if fmv_version == 1:
+        rho = impr / (tf.tensordot(grad_obj, update, 1) +
+                      tf.tensordot(update, fastmatvec_V1(x, y, update, 0), 1))
+    elif fmv_version == 2:
+        rho = impr / (tf.tensordot(grad_obj, update, 1) +
+                      tf.tensordot(update, fastmatvec_V2(x, y, update, 0), 1))
+    else:
+        rho = impr / (tf.tensordot(grad_obj, update, 1) +
+                      tf.tensordot(update, fastmatvec_V3(x, y, update, 0), 1))
 
     if rho > 0.75:
         lam /= 1.5
@@ -308,28 +318,29 @@ for epoch in range(epochs):
         start = i * batch_size
         end = start + batch_size
 
-         #fastmatvec naiv (slow ...)
-#        t = time.time()
-#        lam, update_old = train_step_generalized_gauss_newton(
-#            train_x[start: end], train_y[start: end], lam, update_old)
-#        elapsed = time.time() - t
-#        print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
-#                                                           1).zfill(len(str(epochs))), epochs, elapsed))
-
-        #fastmatvec with R_Op.
-        t = time.time()
-        lam, update_old = train_step_generalized_gauss_newton_R_Op(
-            train_x[start: end], train_y[start: end], lam, update_old)
-        elapsed = time.time() - t
-        print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
-                                                           1).zfill(len(str(epochs))), epochs, elapsed))
-
-         #standard SGD.
-#        t = time.time()
-#        train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.01)
-#        elapsed = time.time() - t
-#        print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
-#                                                           1).zfill(len(str(epochs))), epochs, elapsed))
+        if train_method == 'SGD':
+            #fastmatvec naiv (slow ...)
+            t = time.time()
+            lam, update_old = train_step_generalized_gauss_newton(
+                train_x[start: end], train_y[start: end], lam, update_old)
+            elapsed = time.time() - t
+            print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
+                                                              1).zfill(len(str(epochs))), epochs, elapsed))
+        elif train_method == 'CG_naiv':
+            #standard SGD.
+            t = time.time()
+            train_step_gradient_descent(train_x[start: end], train_y[start: end], 0.01)
+            elapsed = time.time() - t
+            print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
+                                                               1).zfill(len(str(epochs))), epochs, elapsed))
+        else:
+            #fastmatvec with R_Op.
+            t = time.time()
+            lam, update_old = train_step_generalized_gauss_newton_R_Op(
+                train_x[start: end], train_y[start: end], lam, update_old)
+            elapsed = time.time() - t
+            print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
+                                                               1).zfill(len(str(epochs))), epochs, elapsed))
 
 
 #elapsed = time.time() - t
