@@ -7,173 +7,180 @@
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
+\DeclareMathOperator*{\argmax}{arg\,max}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
 
-\title{Conference Paper Title*\\
-{\footnotesize \textsuperscript{*}Note: Sub-titles are not captured in Xplore and
-should not be used}
-\thanks{Identify applicable funding agency here. If none, delete this.}
+\title{A Tensorflow implementation of the Hessian Free Algorithm
+%\\
+%{\footnotesize \textsuperscript{*}Note: Sub-titles are not captured in Xplore and
+%should not be used}
+%\thanks{Identify applicable funding agency here. If none, delete this.}
 }
 
-\author{\IEEEauthorblockN{1\textsuperscript{st} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+\author{\IEEEauthorblockN{Niklas Brunn}
+\IEEEauthorblockA{\textit{Albert Ludwigs University of Freiburg} \\
+\textit{Mathematical Institute}\\
+Freiburg, Germany \\
+niklasbrunn@web.de}
 \and
-\IEEEauthorblockN{2\textsuperscript{nd} Given Name Surname}
+\IEEEauthorblockN{No\"{e}l Kury}
 \IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
 \textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+Freiburg, Germany \\
+email address}
 \and
-\IEEEauthorblockN{3\textsuperscript{rd} Given Name Surname}
+\IEEEauthorblockN{Clemens A. Schächter}
 \IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
 \textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
-\and
-\IEEEauthorblockN{4\textsuperscript{th} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
-\and
-\IEEEauthorblockN{5\textsuperscript{th} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
-\and
-\IEEEauthorblockN{6\textsuperscript{th} Given Name Surname}
-\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
-\textit{name of organization (of Aff.)}\\
-City, Country \\
-email address or ORCID}
+Freiburg, Germany \\
+email address}
 }
 
 \maketitle
 
 \begin{abstract}
-This document is a model and instructions for \LaTeX.
-This and the IEEEtran.cls file define the components of your paper [title, text, heads, etc.]. *CRITICAL: Do Not Use Symbols, Special Characters, Footnotes, 
-or Math in Paper Title or Abstract.
+This report is a written elaboration of a project which was developed in the lecture Numerical Optimization in the winter term 21/22 at the Albert-Ludwigs-University of Freiburg.\\
+We discuss a $2^{\text{nd}}$-order optimization method for training deep neural networks using the Generalised Gauss Newton Matrix as an approximation for the Hessian of the objective loss function. This optimization method is superior to $1^{\text{st}}$-order methods, which uses only the gradient of the objective loss function with respect to the Deep Neural Networks`s parameters, in the sense that fewer iterations are required until convergence. Next, we present an implementation of the method using Python, Tensorflow and examine results using a simulated simple dataset and the MNIST dataset.
 \end{abstract}
 
-\begin{IEEEkeywords}
-component, formatting, style, styling, insert
-\end{IEEEkeywords}
+\section{Introduction} 
+Deep Neural Networks (DNNs) are one of the main components of Deep Learning which is a subfield of Machine Learning. When training a DNN, the network parameters are updated according to certain rules, which we call the DNN optimization method. By default, the Stochastic Gradient Descent (SGD) method is used as the optimization method. This is a $1^{\text{st}}$-order optimization method in which only the negative gradient of the object loss function (OL) with respect to the network parameters is used to update the current parameters.
+One problem of SGD is that pathological curvature is not considered in the OL. This means that the method can get stuck in saddle points, or often converges very slowly in environments with pathological curvature. 
+$2^{\text{nd}}$-order optimization methods take into account the curvature of the OL and can thus circumvent such problems, but they are costly in time because second order derivatives must be computed for this purpose. 
+We want to use a version of Newton's method for DNN optimization as presented in (MARTENS).
+The method presented there uses an approximation of the Hessian matrix, which is positive definite, and thus allows the use of the Conjugate Gradient (CG) method for determining parameter updates. We will therefore go into more detail on the individual problems of standard Newton updates and the improvements proposed for them in order to ensure efficiency.
+We also explain how to implement the method in Python with Tensorflow, using the Automatic Differentiation commands provided in the package for forward differentiation and backward differentiation, and provide the reader our own implementation of the method (GITHUBLINK). 
 
-\section{Introduction}
-This document is a model and instructions for \LaTeX.
-Please observe the conference page limits. 
 
-\section{Ease of Use}
+\section{Training Deep Neural Networks as an optimization problem}
+In this section, we introduce the necessary mathematical notations for training deep neural networks, formulate the Parameter optimization task as a non-linear-program (NLP) and explain tricks for the Objective Loss Function, which will be useful later when implementing the presented method.\\
 
-\subsection{Maintaining the Integrity of the Specifications}
+\subsection{Deep Neural Networks}
+As one of the main components of Deep Learning, DNNs are function approximators that can approximate any continuous function arbitrarily well. Given a dataset of observation pairs $D =\{(x_{i}, y_{i})_{1\leq i\leq N}\}$ with input ${x}$ and corresponding targets $y$, the optimization task is to find optimal parameters such that given an observation $x$, the DNN`s evaluation with current parameters is approximatively the coressponding observed target $y$.  Whenever we use the designation
+DNN we actually mean the realisation of a DNN given an input $x$, which is a mapping
+$$\mathrm{R}_{x}(\theta):\mathbb{R}^{d}\rightarrow\mathbb{R}^{m},$$
+where $\theta$ is a vector containing the parameters of the DNN and $\Theta^{d}=\mathbb{R}^{d}$ denotes the parameter space with usually $d >> m$. We shortly write 
+\begin{align} 
+\hat{y}_{x} := \mathrm{R}_{x}(\theta)
+\end{align}
+for the Output of a DNN given an input $x$ with current parameters $\theta$. In detail $\mathrm{R}_{x}$ is an alternating concatenation of a fixed number of affine and non-linear mappings, where the parameter vector $\theta$ is the collection of every entry of all matrices and vectors in the affine mappings. The affine mappings are called Layers and the non-linear mappings are called activation functions in the Machine Learning literature and are always applied element-wise to the output of the preceding Layers. \\
+(For a more detailed introduction to DNNs, we provide additional material in the Appendix)\\
+Within this report, we also assume that there is no further activation function for DNNs after the last layer but allow that outside the DNN a further activation function $\text{akt}:\mathbb{R}\rightarrow\mathbb{R}$ can be placed after the output, which we will assume to be convex as is the case e.g. in MNIST classification with feed forward DNNs and the softmax-activation function.
+In that case we denote the Output of the afterwards (element wise) application of an activationfunction to the output of a DNN with
+\begin{align}
+z_{x} := \text{akt}(\hat{y}_{x}) = \text{akt}(\mathrm{R}_{x}(\theta)).
+\end{align}
 
-The IEEEtran class file is used to format your paper and style the text. All margins, 
-column widths, line spaces, and text fonts are prescribed; please do not 
-alter them. You may note peculiarities. For example, the head margin
-measures proportionately more than is customary. This measurement 
-and others are deliberate, using specifications that anticipate your paper 
-as one part of the entire proceedings, and not as an independent document. 
-Please do not revise any of the current designations.
+\subsection{Loss functions}
+For the optimization we need a good optimization criterion in the of a scalar-valued loss function
+\begin{align*}
+&\mathrm{L}:\mathbb{R}^{m}\rightarrow \mathbb{R}^{+};\\
+&(\hat{y}_{x}, y)\mapsto \mathrm{L}_{y}(z_{x}) := \mathrm{L}(z_{x}, y),
+\end{align*}
+which is assumed to be at least twice continuous-differentiable and convex, for reasons we will discuss later. The loss can be seen as a feedback signal, how well the DNN fits the observation data with its current parameters.
 
-\section{Prepare Your Paper Before Styling}
-Before you begin to format your paper, first write and save the content as a 
-separate text file. Complete all content and organizational editing before 
-formatting. Please note sections \ref{AA}--\ref{SCM} below for more information on 
-proofreading, spelling and grammar.
+\subsection{Network training formulated as a NLP}
+Parameter optimization of a Deep Neural Network can be formulated as an unconstrained NLP. Therefore we define the OL as a mapping which calculates the empirical loss of the DNN`s output with current parameters $\theta$ given the input $x$ and the actual target $y$
+\begin{align*}
+&f_{D}:\Theta^{d}\rightarrow\mathbb{R}^{+};\\
+\theta\mapsto f_{D}(\theta) &:= \mathbb{E}_{D}[\mathrm{L}_{y}(z_{x})] =  \frac{1}{N}\sum_{j = 1}^{N}\mathrm{L}_{y_{j}}(z_{x_{j}}).
+\end{align*}
+Thus we get the corresponding NLP formulation
+$$\argmax_{\theta\in\Theta^{d}}\quad f_{D}(\theta),$$
+where $\theta$ denotes the decition variable and $f_{D}$ the objective function of the NLP.
+Further, if we consider only one observation $(x, y)$ from the observation data set $D$, then we briefly write  $f_{x, y}$ for the corresponding OL.
 
-Keep your text and graphic files separate until after the text has been 
-formatted and styled. Do not number text heads---{\LaTeX} will do that 
-for you.
+\subsection{Matching loss functions}
+For later purposes we need to calculate the Jacobian or. the gradient of the OL with respect to the DNN`s parameters. Since the derivative is linear and for simplicity, we consider the OL for only one pair of observations
+\begin{align}
+\frac{\partial}{\partial\theta}f_{x, y}(\theta) = \mathrm{J}_{f_{x, y}}.
+\end{align}
+Applying the chain rule we can rewrite it to
+\begin{align}
+\mathrm{J}_{f_{x, y}} &= \mathrm{J}_{\mathrm{L}_{y}\circ \:\text{akt} \:\circ\:\mathrm{R}_{x}} = \mathrm{J}_{\mathrm{L}_{y}} \: \mathrm{J}_{\text{akt}} \: \mathrm{J}_{\mathrm{R}_{x}},\\
+\mathrm{J}_{f_{x, y}}^{\mathrm{T}} &= \mathrm{J}_{\mathrm{R}_{x}}^{\mathrm{T}} \: \mathrm{J}_{\text{akt}}^{\mathrm{T}} \: \mathrm{J}_{\mathrm{L}_{y}}^{\mathrm{T}}.
+\end{align}
+As (Schraudolph) introduced it in his Article, we also make use of the so-called matching loss functions, where we say that a loss function $\mathrm{L}$ matches the output-non-linearity $\text{akt}$ if
+\begin{align}
+\frac{\partial}{\partial\hat{y}_{x}}\left(\mathrm{L}_{y}\circ \text{akt}\right)^{\mathrm{T}}(\hat{y}_{x})= \mathrm{J}_{\mathrm{L}_{y}\circ \:\text{akt}}^{\mathrm{T}} = A\: z_{x} + b,
+\end{align}
+for a matrix $A$ and a vector $b$ which both do not depend on the parameters $\theta$.
+The concept of matching loss functions will helpe us later in the implementation of the method. We will also see that many of the well known loss functions used for DNN optimization match their output-non-linearity, e.g. the squared error loss function.
 
-\subsection{Abbreviations and Acronyms}\label{AA}
-Define abbreviations and acronyms the first time they are used in the text, 
-even after they have been defined in the abstract. Abbreviations such as 
-IEEE, SI, MKS, CGS, ac, dc, and rms do not have to be defined. Do not use 
-abbreviations in the title or heads unless they are unavoidable.
 
-\subsection{Units}
-\begin{itemize}
-\item Use either SI (MKS) or CGS as primary units. (SI units are encouraged.) English units may be used as secondary units (in parentheses). An exception would be the use of English units as identifiers in trade, such as ``3.5-inch disk drive''.
-\item Avoid combining SI and CGS units, such as current in amperes and magnetic field in oersteds. This often leads to confusion because equations do not balance dimensionally. If you must use mixed units, clearly state the units for each quantity that you use in an equation.
-\item Do not mix complete spellings and abbreviations of units: ``Wb/m\textsuperscript{2}'' or ``webers per square meter'', not ``webers/m\textsuperscript{2}''. Spell out units when they appear in text: ``. . . a few henries'', not ``. . . a few H''.
-\item Use a zero before decimal points: ``0.25'', not ``.25''. Use ``cm\textsuperscript{3}'', not ``cc''.)
-\end{itemize}
+\section{$2^{\text{nd}}$-order optimization}
+In this section we want to give the reader a compact presentation of the different components used in the presented method. We will briefly review the Newton`s method and go over the advantages and disadvantages of the Hessian matrix, and then introduce the necessary theory for the efficient $2^{\text{nd}}$-order optimization method.
 
-\subsection{Equations}
-Number equations consecutively. To make your 
-equations more compact, you may use the solidus (~/~), the exp function, or 
-appropriate exponents. Italicize Roman symbols for quantities and variables, 
-but not Greek symbols. Use a long dash rather than a hyphen for a minus 
-sign. Punctuate equations with commas or periods when they are part of a 
-sentence, as in:
-\begin{equation}
-a+b=\gamma\label{eq}
-\end{equation}
+\subsection{Newton's method}\label{AA}
+As mentioned before, Newton`s method is an optimization method, where we update the decition variables of a NLP iteratively by
+\begin{align}
+ \theta_{k+1} = \theta_{k} + t\cdot (-\mathrm{H}_{f_{x, y}}^{-1}\:\mathrm{J}_{f_{x, y}}^{\mathrm{T}}),
+\end{align}
+where $\mathrm{H}_{f_{x, y}}$ denotes the always symmetric hessian matrix of the OL with respect to the current DNN`s parameters $\theta$ in the $k+1$-th step and for some scalar value $t$, representing the learning rate. In practice we set the learning rate constant to $t=1$. This approach is motivated by minimize the local quadratic approximation
+\begin{align}
+q(\theta + \delta)_{x, y} := f_{x, y}(\theta) + \mathrm{J}_{f_{x, y}}^{\mathrm{T}}\:\delta + \frac{1}{2}\:\delta^{\mathrm{T}}\:\mathrm{H_{f_{x, y}}}\:\delta \approx f_{x, y}(\theta + \delta).
+\end{align}
+with respect to $\delta$. 
+Respecting informations about the curvature of the OL, using the hessian can in contrast to the usage of gradient descent lead to convergence in much lesser iterations because it rescales the gradient of the OL in every step.
 
-Be sure that the 
-symbols in your equation have been defined before or immediately following 
-the equation. Use ``\eqref{eq}'', not ``Eq.~\eqref{eq}'' or ``equation \eqref{eq}'', except at 
-the beginning of a sentence: ``Equation \eqref{eq} is . . .''
+\subsection{Problems with the Hessian}
+We implicitly assume in every step of the Newton`s methode that the Hessian matrix is invertible, which in our case is very rare in the task of optimizing DNN`s parameters and even if the Hessian is invertible, we cannot ensure converges to a local minimum, since the Hessian usually does not have to be positive semidefinite either. Apart from that, the Hessian matrix has $d^{2}$ entries when optimizing DNNs, which makes it incredibly expensive to calculate, assuming $d>>m$. For this reason, the direct application of Newton's method to our task is inappropriate and we must first make some modifications.
 
-\subsection{\LaTeX-Specific Advice}
+\subsection{The Generalized Gauss Newton Matrix}
+As a first improvement, we no longer use the Hessian matrix itself, but the Generalized Gauss Newton matrix (GGN), which is an approximation of the Hessian matrix
+\begin{align}
+\mathrm{G}_{f_{x, y}} := \mathrm{J}_{\hat{y}_{x}}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\hat{y}_{x}},
+\end{align}
+with $\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}$ denoting the hessian of $\mathrm{L_{y}\circ\:\text{akt}}$ with respect to the DNN`s output $\hat{y}_{x}$.
+This representation is motivated by the fact that in the representation of the complete Hessian matrix
+\begin{align}
+\mathrm{J}_{\hat{y}_{x}}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\hat{y}_{x}}\:\sum_{j = 1}^{m}\left(\left(\mathrm{J}_{\mathrm{L}_{y}\circ \:\text{akt}}^{\mathrm{T}}\right)_{j}\cdot\mathrm{H}_{(\hat{y}_{x})_{j}}\right),
+\end{align}
+where $\mathrm{H}_{(\hat{y}_{x})_{j}}$ denotes the hessian of the DNN`s  $j$-th output, the last sum-term vanishes if 
+$$\left(\mathrm{J}_{\mathrm{L}_{y}\circ \:\text{akt}}^{\mathrm{T}}\right)_{j}\approx 0,$$
+which means that in this case the network represents the targets well.  Moreover, the GGN is a symmetric matrix and is positive semidefinite for non-decreasing convex loss functions since for every $v\in\mathbb{R}^{d}$ and from the convexity of $\mathrm{L_{y}\circ\:\text{akt}}$ it holds that
+\begin{align}
+v^{\mathrm{T}}\:\mathrm{G}_{f_{x, y}}\:v &= v^{\mathrm{T}}\:\left( \mathrm{J}_{\hat{y}_{x}}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\hat{y}_{x}}\right)\:v\\
+&= \left(\mathrm{J}_{\hat{y}_{x}\:v}\right)^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\left(\mathrm{J}_{\hat{y}_{x}\:v}\right) \\
+&\geq 0.
+\end{align}
+Note that in the case, where the extra activation function is not convex, we can also place the aktivation function behind the last Layer of the DNN resulting in a more general formulation of the GGN
+\begin{align}
+\mathrm{G}_{f_{x, y}} = \mathrm{J}_{\hat{y}_{x}}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}}}\:\mathrm{J}_{\hat{y}_{x}},
+\end{align}
+where the above discussed properties remain due to the convexity of the loss function.
+This 
+\subsection{Levenberg-Marquardt algorithm }
+Even if we replace the hessian with the symmertic and positive semidefinite GNN in the steps of the above presented Newton`s method, it is sometimes the case that this matrix is also not invertible and therefore we cant compute a solution of the non-linear system 
+\begin{align}
+\mathrm{H}_{f_{x, y}}\cdot(\theta_{k+1} - \theta_{k}) = -t\cdot\mathrm{J}_{f_{x, y}}^{\mathrm{T}},
+\end{align}
+which is equivalent to finding a solution of the system [entsprechende Nummer von Oben; Abschnit Newton`s Method].
+For that reason we use a damped version of the GGN (DGGN) where we add an additional positive definite diagonal matrix with sufficient large enough values on the diagonal, e.g.
+\begin{align}
+\mathrm{DG}_{f_{x, y}} := \mathrm{G}_{f_{x, y}} + \lambda\cdot\mathrm{I}^{d\times d},
+\end{align}
+with $\mathrm{I}^{d\times d}$ denoting the $d\times d$ unit matrix and some $\lambda>0$.
+The DGGN constructed in this way is then actually invertible. 
+To see this we consider the decomposition
+\begin{align}
+\mathrm{G}_{f_{x, y}} = \mathrm{U}\:\Lambda\:\mathrm{U}^{\mathrm{T}},
+\end{align}
+with an orthogonal Matrix $\mathrm{U}\in\mathbb{R}^{d\times d}$ and a diagonal Matrix $\Lambda\in\mathbb{R}^{d\times d}$ which on the diagonal entries contains the non-negative eigenvalues of the GGN. This decomposition exists because the GGN is symmetric and positive semidefinite. Further it holds that
+\begin{align}
+\mathrm{DG}_{f_{x, y}} &= \mathrm{U}\:\Lambda\:\mathrm{U}^{\mathrm{T}} + \lambda\cdot\mathrm{I}^{d\times d}\\
+&= \mathrm{U}\:\Lambda\:\mathrm{U}^{\mathrm{T}} + \mathrm{U}\:\lambda\cdot\mathrm{I}^{d\times d}\:\mathrm{U}^{\mathrm{T}}\\
+&= \mathrm{U}\:\left(\Lambda + \lambda\cdot\mathrm{I}\right)\:\mathrm{U}^{\mathrm{T}}
+\end{align}
+where the Matrix $\left(\Lambda + \lambda\cdot\mathrm{I}\right)$ is a diagonal one with only positive entries on the diagonal. Therefore the determinant of the produkt of the matrices in the last term is positive and as a consequence we get that the DGGN is invertible.
+Note that a choice of $\lambda>>0$ leads to a Newton step where we would nearly not move away from our current parameters if $t = 1$, while a choice of $\lambda\approx 0$ leads to a full step using the GGN [als Quelle zum Nachlesen hier vllt. das Vorlesungsskript angeben, Kapitel 6.7]. In practice, we update the value $\lambda$ after each iteration step according to certain conditions which we will explain in more detail later.
+\\TODO ... (warum ist die resultierende Matrix dann invertierbar noch hinzufügen ...)
+\subsection{Conjugate gradient method}
+TODO ... (CG Erklären, R-Op. und effiziente Matrix-V-P., CG-Methode Extras erklären)
 
-Please use ``soft'' (e.g., \verb|\eqref{Eq}|) cross references instead
-of ``hard'' references (e.g., \verb|(1)|). That will make it possible
-to combine sections, add equations, or change the order of figures or
-citations without having to go through the file line by line.
-
-Please don't use the \verb|{eqnarray}| equation environment. Use
-\verb|{align}| or \verb|{IEEEeqnarray}| instead. The \verb|{eqnarray}|
-environment leaves unsightly spaces around relation symbols.
-
-Please note that the \verb|{subequations}| environment in {\LaTeX}
-will increment the main equation counter even when there are no
-equation numbers displayed. If you forget that, you might write an
-article in which the equation numbers skip from (17) to (20), causing
-the copy editors to wonder if you've discovered a new method of
-counting.
-
-{\BibTeX} does not work by magic. It doesn't get the bibliographic
-data from thin air but from .bib files. If you use {\BibTeX} to produce a
-bibliography you must send the .bib files. 
-
-{\LaTeX} can't read your mind. If you assign the same label to a
-subsubsection and a table, you might find that Table I has been cross
-referenced as Table IV-B3. 
-
-{\LaTeX} does not have precognitive abilities. If you put a
-\verb|\label| command before the command that updates the counter it's
-supposed to be using, the label will pick up the last counter to be
-cross referenced instead. In particular, a \verb|\label| command
-should not go before the caption of a figure or a table.
-
-Do not use \verb|\nonumber| inside the \verb|{array}| environment. It
-will not stop equation numbers inside \verb|{array}| (there won't be
-any anyway) and it might stop a wanted equation number in the
-surrounding equation.
-
-\subsection{Some Common Mistakes}\label{SCM}
-\begin{itemize}
-\item The word ``data'' is plural, not singular.
-\item The subscript for the permeability of vacuum $\mu_{0}$, and other common scientific constants, is zero with subscript formatting, not a lowercase letter ``o''.
-\item In American English, commas, semicolons, periods, question and exclamation marks are located within quotation marks only when a complete thought or name is cited, such as a title or full quotation. When quotation marks are used, instead of a bold or italic typeface, to highlight a word or phrase, punctuation should appear outside of the quotation marks. A parenthetical phrase or statement at the end of a sentence is punctuated outside of the closing parenthesis (like this). (A parenthetical sentence is punctuated within the parentheses.)
-\item A graph within a graph is an ``inset'', not an ``insert''. The word alternatively is preferred to the word ``alternately'' (unless you really mean something that alternates).
-\item Do not use the word ``essentially'' to mean ``approximately'' or ``effectively''.
-\item In your paper title, if the words ``that uses'' can accurately replace the word ``using'', capitalize the ``u''; if not, keep using lower-cased.
-\item Be aware of the different meanings of the homophones ``affect'' and ``effect'', ``complement'' and ``compliment'', ``discreet'' and ``discrete'', ``principal'' and ``principle''.
-\item Do not confuse ``imply'' and ``infer''.
-\item The prefix ``non'' is not a word; it should be joined to the word it modifies, usually without a hyphen.
-\item There is no period after the ``et'' in the Latin abbreviation ``et al.''.
-\item The abbreviation ``i.e.'' means ``that is'', and the abbreviation ``e.g.'' means ``for example''.
-\end{itemize}
-An excellent style manual for science writers is \cite{b7}.
+\section {Implementation}
 
 \subsection{Authors and Affiliations}
 \textbf{The class file is designed for, but not limited to, six authors.} A 
@@ -244,6 +251,14 @@ with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization
 quantities and units. For example, write ``Temperature (K)'', not 
 ``Temperature/K''.
 
+\section{Experiments}
+
+\subsection{Simple simulated data}
+...
+
+\subsection{MNIST}
+...
+
 \section*{Acknowledgment}
 
 The preferred spelling of the word ``acknowledgment'' in America is without 
@@ -251,38 +266,13 @@ an ``e'' after the ``g''. Avoid the stilted expression ``one of us (R. B.
 G.) thanks $\ldots$''. Instead, try ``R. B. G. thanks$\ldots$''. Put sponsor 
 acknowledgments in the unnumbered footnote on the first page.
 
-\section*{References}
-
-Please number citations consecutively within brackets \cite{b1}. The 
-sentence punctuation follows the bracket \cite{b2}. Refer simply to the reference 
-number, as in \cite{b3}---do not use ``Ref. \cite{b3}'' or ``reference \cite{b3}'' except at 
-the beginning of a sentence: ``Reference \cite{b3} was the first $\ldots$''
-
-Number footnotes separately in superscripts. Place the actual footnote at 
-the bottom of the column in which it was cited. Do not put footnotes in the 
-abstract or reference list. Use letters for table footnotes.
-
-Unless there are six authors or more give all authors' names; do not use 
-``et al.''. Papers that have not been published, even if they have been 
-submitted for publication, should be cited as ``unpublished'' \cite{b4}. Papers 
-that have been accepted for publication should be cited as ``in press'' \cite{b5}. 
-Capitalize only the first word in a paper title, except for proper nouns and 
-element symbols.
-
-For papers published in translation journals, please give the English 
-citation first, followed by the original foreign-language citation \cite{b6}.
 
 \begin{thebibliography}{00}
-\bibitem{b1} G. Eason, B. Noble, and I. N. Sneddon, ``On certain integrals of Lipschitz-Hankel type involving products of Bessel functions,'' Phil. Trans. Roy. Soc. London, vol. A247, pp. 529--551, April 1955.
-\bibitem{b2} J. Clerk Maxwell, A Treatise on Electricity and Magnetism, 3rd ed., vol. 2. Oxford: Clarendon, 1892, pp.68--73.
-\bibitem{b3} I. S. Jacobs and C. P. Bean, ``Fine particles, thin films and exchange anisotropy,'' in Magnetism, vol. III, G. T. Rado and H. Suhl, Eds. New York: Academic, 1963, pp. 271--350.
-\bibitem{b4} K. Elissa, ``Title of paper if known,'' unpublished.
-\bibitem{b5} R. Nicole, ``Title of paper with only first word capitalized,'' J. Name Stand. Abbrev., in press.
-\bibitem{b6} Y. Yorozu, M. Hirano, K. Oka, and Y. Tagawa, ``Electron spectroscopy studies on magneto-optical media and plastic substrate interface,'' IEEE Transl. J. Magn. Japan, vol. 2, pp. 740--741, August 1987 [Digests 9th Annual Conf. Magnetics Japan, p. 301, 1982].
-\bibitem{b7} M. Young, The Technical Writer's Handbook. Mill Valley, CA: University Science, 1989.
+\bibitem{b1} Moritz Diehl, "Lecture Notes on Numerical Optimization (Preliminary Draft)", Albert Ludwigs University of Freiburg, September 29, 2017	
+\bibitem{b2} James Martens, "Deep learning via Hessian-free optimization", University of Toronto, Ontario, M5S 1A1, Canada, 2010
+\bibitem{b3} James Martens, "New Insights and Perspectives on the Natural Gradient Method", Jurnal of Machine Learning Research 21, arXiv:1412.1193v11 [cs.LG], September 19, 2020
+\bibitem{b4} Nicol N. Schraudolph, "Fast Curvature Matrix-Vector Products for Second-Order
+Gradient Descent", Neural Computation, August 2002
 \end{thebibliography}
-\vspace{12pt}
-\color{red}
-IEEE conference templates contain guidance text for composing and formatting conference papers. Please ensure that all template text is removed from your conference paper prior to submission to the conference. Failure to remove the template text from your paper may result in your paper not being published.
 
 \end{document}
