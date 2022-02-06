@@ -1,0 +1,66 @@
+\headcommand {\slideentry {0}{0}{1}{1/1}{}{0}}
+\headcommand {\beamer@framepages {1}{1}}
+\headcommand {\beamer@sectionpages {1}{1}}
+\headcommand {\beamer@subsectionpages {1}{1}}
+\headcommand {\sectionentry {1}{Formulation of the optimization problem}{2}{Formulation of the optimization problem}{0}}
+\headcommand {\beamer@subsectionpages {2}{1}}
+\headcommand {\beamer@subsectionentry {0}{1}{1}{2}{Unconstrained NLP}}
+\headcommand {\slideentry {1}{1}{1}{2/5}{Unconstrained NLP}{0}}
+\headcommand {\beamer@framepages {2}{5}}
+\headcommand {\beamer@subsectionpages {2}{5}}
+\headcommand {\beamer@subsectionentry {0}{1}{2}{6}{Optimization method}}
+\headcommand {\beamer@subsectionpages {6}{5}}
+\headcommand {\beamer@subsectionentry {0}{1}{3}{6}{Implementation}}
+\headcommand {\beamer@sectionpages {2}{5}}
+\headcommand {\beamer@subsectionpages {6}{5}}
+\headcommand {\sectionentry {2}{Experiments}{6}{Experiments}{0}}
+\headcommand {\beamer@subsectionpages {6}{5}}
+\headcommand {\beamer@subsectionentry {0}{2}{1}{6}{Simple simulated dataset}}
+\headcommand {\beamer@subsectionpages {6}{5}}
+\headcommand {\beamer@subsectionentry {0}{2}{2}{6}{MNIST}}
+\headcommand {\beamer@sectionpages {6}{5}}
+\headcommand {\beamer@subsectionpages {6}{5}}
+\headcommand {\sectionentry {3}{Formulation of the optimization problem}{6}{Formulation of the optimization problem}{0}}
+\headcommand {\beamer@subsectionpages {6}{5}}
+\headcommand {\beamer@subsectionentry {0}{3}{1}{6}{Unconstrained NLP}}
+\headcommand {\slideentry {3}{1}{1}{6/9}{Unconstrained NLP}{0}}
+\headcommand {\beamer@framepages {6}{9}}
+\headcommand {\beamer@subsectionpages {6}{9}}
+\headcommand {\beamer@subsectionentry {0}{3}{2}{10}{Optimization method}}
+\headcommand {\beamer@subsectionpages {10}{9}}
+\headcommand {\beamer@subsectionentry {0}{3}{3}{10}{Implementation}}
+\headcommand {\beamer@sectionpages {6}{9}}
+\headcommand {\beamer@subsectionpages {10}{9}}
+\headcommand {\sectionentry {4}{Experiments}{10}{Experiments}{0}}
+\headcommand {\beamer@subsectionpages {10}{9}}
+\headcommand {\beamer@subsectionentry {0}{4}{1}{10}{Simple simulated dataset}}
+\headcommand {\beamer@subsectionpages {10}{9}}
+\headcommand {\beamer@subsectionentry {0}{4}{2}{10}{MNIST}}
+\headcommand {\beamer@sectionpages {10}{9}}
+\headcommand {\beamer@subsectionpages {10}{9}}
+\headcommand {\sectionentry {5}{Formulation of the optimization problem}{10}{Formulation of the optimization problem}{0}}
+\headcommand {\beamer@subsectionpages {10}{9}}
+\headcommand {\beamer@subsectionentry {0}{5}{1}{10}{Unconstrained NLP}}
+\headcommand {\slideentry {5}{1}{1}{10/13}{Unconstrained NLP}{0}}
+\headcommand {\beamer@framepages {10}{13}}
+\headcommand {\beamer@subsectionpages {10}{13}}
+\headcommand {\beamer@subsectionentry {0}{5}{2}{14}{Optimization method}}
+\headcommand {\beamer@subsectionpages {14}{13}}
+\headcommand {\beamer@subsectionentry {0}{5}{3}{14}{Implementation}}
+\headcommand {\beamer@sectionpages {10}{13}}
+\headcommand {\beamer@subsectionpages {14}{13}}
+\headcommand {\sectionentry {6}{Experiments}{14}{Experiments}{0}}
+\headcommand {\beamer@subsectionpages {14}{13}}
+\headcommand {\beamer@subsectionentry {0}{6}{1}{14}{Simple simulated dataset}}
+\headcommand {\beamer@subsectionpages {14}{13}}
+\headcommand {\beamer@subsectionentry {0}{6}{2}{14}{MNIST}}
+\headcommand {\beamer@sectionpages {14}{13}}
+\headcommand {\beamer@subsectionpages {14}{13}}
+\headcommand {\sectionentry {7}{Literatur}{14}{Literatur}{0}}
+\headcommand {\slideentry {7}{0}{0}{14/14}{MNIST}{0}}
+\headcommand {\beamer@framepages {14}{14}}
+\headcommand {\beamer@partpages {1}{14}}
+\headcommand {\beamer@subsectionpages {14}{14}}
+\headcommand {\beamer@sectionpages {14}{14}}
+\headcommand {\beamer@documentpages {14}}
+\headcommand {\gdef \inserttotalframenumber {5}}
