@@ -14,14 +14,14 @@ tf.get_logger().setLevel(logging.ERROR)
 #Hyperparameter:
 ################
 
-Data_Seed = 1
-Model_Seed = 1
+Data_Seed = 7
+Model_Seed = 7
 train_size = 1500
 test_size = 500
 batch_size = 100
-epochs = 10
-CG_steps = 10 # minimale Anzahl der Schritte in der CG-Methode.
-model_neurons = [1, 30, 30, 1]
+epochs = 250
+CG_steps = 3 # minimale Anzahl der Schritte in der CG-Methode.
+model_neurons = [1, 15, 15, 1]
 num_updates = int(train_size / batch_size)
 
 outliers = False # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert.
@@ -407,6 +407,11 @@ train_loss_vec_SGD = np.zeros(epochs)
 epoch_vec_SGD = [i for i in range(epochs)]
 time_vec_SGD = np.zeros(epochs)
 
+train_time_SGD = np.zeros(epochs*num_updates)
+error_history_test_SGD = np.zeros(epochs*num_updates)
+error_history_train_SGD = np.zeros(epochs*num_updates)
+epochs_SGD = np.zeros(epochs*num_updates)
+
 if SGD_allowed == True:
     for epoch in range(epochs):
         train_loss = model_loss(y_train, model.predict(x_train))
@@ -424,10 +429,22 @@ if SGD_allowed == True:
             #test_loss = model_loss(y_test, model.predict(x_test))
             #print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
             #                                                           1).zfill(len(str(epochs))), epochs, test_loss))
+
+            error_new_train_SGD = model_loss(y_train, model.predict(x_train))
+            error_new_test_SGD = model_loss(y_test, model.predict(x_test))
+
             start = i * batch_size
             end = start + batch_size
 
+            s = time.time()
             train_step_gradient_descent(x_train[start: end], y_train[start: end], 0.3)
+            elapseds = time.time() - s
+
+            train_time_SGD[epoch*num_updates+i] = elapseds
+            error_history_train_SGD[epoch*num_updates+i] = error_new_train_SGD
+            error_history_test_SGD[epoch*num_updates+i] = error_new_test_SGD
+            epochs_SGD[epoch*num_updates+i] = epoch
+
         elapsed = time.time() - t
         print('estimated time for the update step:', elapsed, 'sec')
         if epoch == 0:
@@ -443,6 +460,13 @@ if SGD_allowed == True:
     x = model.predict(a)
     ax0.plot(a, x, label='Prediction SGD', c='blue')
 
+np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//train_time_SGD.npy', train_time_SGD)
+np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_train_SGD.npy', error_history_train_SGD)
+np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_test_SGD.npy', error_history_test_SGD)
+np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_SGD.npy', epochs_SGD)
+
+#a = np.loadtxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_SGD.npy')
+#print(a)
 
 #GN-TRAINING:
 
@@ -466,6 +490,12 @@ train_loss_vec_GN = np.zeros(epochs)
 epoch_vec_GN = [i for i in range(epochs)]
 time_vec_GN = np.zeros(epochs)
 
+train_time_GN = np.zeros(epochs*num_updates)
+error_history_test_GN = np.zeros(epochs*num_updates)
+error_history_train_GN = np.zeros(epochs*num_updates)
+epochs_GN = np.zeros(epochs*num_updates)
+
+
 if GN_allowed == True:
     for epoch in range(epochs):
         train_loss = model_loss(y_train, model.predict(x_train))
@@ -483,11 +513,23 @@ if GN_allowed == True:
             #test_loss = model_loss(y_test, model.predict(x_test))
             #print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
             #                                                           1).zfill(len(str(epochs))), epochs, test_loss))
+
+            error_new_train_GN = model_loss(y_train, model.predict(x_train))
+            error_new_test_GN = model_loss(y_test, model.predict(x_test))
+
             start = i * batch_size
             end = start + batch_size
 
+            s = time.time()
             lam, update_old = train_step_generalized_gauss_newton(
                 x_train[start: end], y_train[start: end], lam, update_old)
+            elapseds = time.time() - s
+
+            train_time_GN[epoch*num_updates+i] = elapseds
+            error_history_train_GN[epoch*num_updates+i] = error_new_train_SGD
+            error_history_test_GN[epoch*num_updates+i] = error_new_test_SGD
+            epochs_GN[epoch*num_updates+i] = epoch
+
         elapsed = time.time() - t
         print('estimated time for the update step:', elapsed, 'sec')
         if epoch == 0:
@@ -503,6 +545,11 @@ if GN_allowed == True:
     x = model.predict(a)
     ax0.plot(a, x, label='Prediction GN', c='orange')
 
+np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//train_time_SGD.npy', train_time_SGD)
+np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_train_SGD.npy', error_history_train_SGD)
+np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_test_SGD.npy', error_history_test_SGD)
+np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_SGD.npy', epochs_SGD)
+
 ax0.set_ylim(-0.6, 10)
 ax0.set_xlim(-np.sqrt(10), np.sqrt(10))
 ax0.set_title('Data and Predictions')
@@ -514,7 +561,7 @@ ax0.legend(loc='upper right')
 #######
 
 ####Train_loss_epochs_plot:
-ax1.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
+ax1.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r',label='SGD', linewidth=0.8)
 ax1.set_xlabel('Epochs')
 ax1.set_ylabel('Train-Loss')
 ax1.set_title('Train-Loss per Epochs:')
@@ -522,12 +569,12 @@ ax1.set_ylim(-0.005, 0.1)
 ax1.set_xlim(0.5, epochs)
 
 if GN_allowed == True:
-    ax1.plot(epoch_vec_GN, train_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
+    ax1.plot(epoch_vec_GN, train_loss_vec_GN, 'b', label='GN', linewidth=0.8)
 
 ax1.legend(loc='upper right')
 
 ####Test_loss_epochs_plot:
-ax2.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
+ax2.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r',label='SGD', linewidth=0.8)
 ax2.set_xlabel('Epochs')
 ax2.set_ylabel('Test-Loss')
 ax2.set_title('Test-Loss per Epochs:')
@@ -535,29 +582,31 @@ ax2.set_ylim(-0.005, 0.1)
 ax2.set_xlim(0.5, epochs)
 
 if GN_allowed == True:
-    ax2.plot(epoch_vec_GN, test_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
+    ax2.plot(epoch_vec_GN, test_loss_vec_GN, 'b', label='GN', linewidth=0.8)
 
 ax2.legend(loc='upper right')
 
 ####Train_loss_time_plot:
-ax3.plot(time_vec_SGD, train_loss_vec_SGD, 'r--',label='SGD', linewidth=1.2)
+ax3.plot(time_vec_SGD, train_loss_vec_SGD, 'r',label='SGD', linewidth=0.8)
 ax3.set_xlabel('Time (in seconds)')
 ax3.set_ylabel('Train-Loss')
 ax3.set_title('Train-Loss per Time:')
+ax3.set_ylim(-0.005, 0.1)
 
 if GN_allowed == True:
-    ax3.plot(time_vec_GN, train_loss_vec_GN, 'b--', label='GN', linewidth=1.2)
+    ax3.plot(time_vec_GN, train_loss_vec_GN, 'b', label='GN', linewidth=0.8)
 
 ax3.legend(loc='upper right')
 
 ####Test_loss_time_plot:
-ax4.plot(time_vec_SGD, test_loss_vec_SGD, 'ro', label='SGD', linewidth=1.2)
+ax4.plot(time_vec_SGD, test_loss_vec_SGD, 'r', label='SGD', linewidth=0.8)
 ax4.set_xlabel('Time (in seconds)')
 ax4.set_ylabel('Test-Loss')
 ax4.set_title('Test-Loss per Time:')
+ax4.set_ylim(-0.005, 0.1)
 
 if GN_allowed == True:
-    ax4.plot(time_vec_GN, test_loss_vec_GN, 'bo', label='GN', linewidth=1.2)
+    ax4.plot(time_vec_GN, test_loss_vec_GN, 'b', label='GN', linewidth=0.8)
 
 ax4.legend(loc='upper right')
 

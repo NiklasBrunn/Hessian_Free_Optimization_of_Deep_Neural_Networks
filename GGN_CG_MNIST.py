@@ -18,8 +18,8 @@ batch_size = 250
 epochs = 1
 CG_steps = 3
 model_neurons = [784, 800, 10]
-fmv_version = 3 # options are 1, 2, 3 (gibt an welche fastmatvec Funktion benutzt wird)
-train_method = 'SGD' # options are: 'SGD', 'CG_naiv', 'CG_R_Op'
+fmv_version = 2 # options are 1, 2, 3 (gibt an welche fastmatvec Funktion benutzt wird)
+train_method = 'CG_R_Op' # options are: 'SGD', 'CG_naiv', 'CG_R_Op'
 Net = 'Dense' # options are 'Dense', 'CNN'
 
 
