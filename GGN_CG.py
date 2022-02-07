@@ -117,7 +117,6 @@ lam = 1
 
 #Funktion für Hesse-Vektor-Produkte ohne davor Gradienten berechnet zu haben:
 def efficient_hessian_vec(v, x, y, theta, lam):
-    #s = time.time() # Einfügen ermöglicht die Rechenzeit für die Funktion auszugeben
     with tf.GradientTape(persistent=True) as tape2:
         with tf.GradientTape(persistent=True) as tape1:
             y_pred = model(x)
@@ -125,33 +124,11 @@ def efficient_hessian_vec(v, x, y, theta, lam):
         theta = model.trainable_variables
         grad = tape1.gradient(loss, theta)
 
-        #grad = tape1.gradient(loss, theta[0])# neue gute Methode zum Vergleich
-        #gradd = tape1.gradient(loss, theta[0])## langsame Berechnung mit der korrekten Hesse
-
         grad_1 = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad)], axis=0))
         mat_vec = tf.math.multiply(grad_1, tf.stop_gradient(v))
 
-        #mat_vec = tf.math.multiply(grad_1, tf.stop_gradient(v[0:n_params[0]]))# neue gute Methode zum Vergleich
-
     mat_vec_res = tape2.gradient(mat_vec, theta)
-
-    #mat_vec_res = tape2.gradient(mat_vec, theta[0])# neue gute Methode zum Vergleich
-
     mat_vec_res = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(mat_vec_res)], axis=0))
-
-    #hess = tape2.jacobian(gradd, theta[0])## langsame Berechnung mit der korrekten Hesse
-    #hess = tf.reshape(hess, [n_params[0], n_params[0]])## langsame Berechnung mit der korrekten Hesse
-
-    #hess_vec = tf.linalg.matvec(hess, v[0:n_params[0]])## langsame Berechnung mit der korrekten Hesse
-    #
-    #print(hess_vec)## langsame Berechnung mit der korrekten Hesse
-
-    #print(mat_vec_res)# neue gute Methode zum Vergleich
-
-    #print(hess_vec - mat_vec_res)
-
-    #elapsed = time.time() - s # Einfügen ermöglicht die Rechenzeit für die Funktion auszugeben
-    #print('estimated time for hessian-vector calculation is:', elapsed)
     return mat_vec_res + lam * v
 
 
@@ -172,6 +149,8 @@ def fastmatvec(x_batch, y_batch, v, lam):
     v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
                                   for i, v in enumerate(backward)], axis=0))
     return v_new/batch_size + lam * v
+
+
 
 def preconditioned_cg_method_R_Op(x_batch, y_batch, v, b, min_steps, precision):
     r = b - fastmatvec(x_batch, y_batch, v, lam) # (A+lam*I) * x
@@ -614,18 +593,3 @@ if plotting == True:
     plt.show()
 else:
     print("no plots were generated ...")
-
-
-#################
-#TO-DOs und Link:
-#################
-
-'''
-https://sudonull.com/post/61595-Hessian-Free-optimization-with-TensorFlow
-
-1) Plots sollen gemittelte Werte mit Auswertungen von ca. 5 verschidenen Random-
-   Seeds zeigen
-2) CasADi Auswertung als Vergleich für die schriftliche Ausarbeitung
-3) R_OP nochmal wegen den Batches überprüfen ob das so stimmt!!!
-[4) ADAM optimizer gegentesten (konvergiert das schneller?)]
-'''
