@@ -1,2 +1,2 @@
 # NumOpt_project
-about ANNs and optimization methods
+about DNNs and optimization methods
