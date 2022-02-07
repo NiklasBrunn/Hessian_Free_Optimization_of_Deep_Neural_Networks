@@ -30,8 +30,8 @@
 \frametitle{Implementation}
 \begin{itemize}
 	\item[] $$\underbrace{\mathrm{DG}_{k}\cdot (\theta_{k+1} - \theta_{k})} = -\nabla_{\theta_{k}}f_{D}$$
-	\item updates with (preconditioned) Conjugate Gradient method using efficient matrix-vector-products with the $\mathcal{R}$-operator
-	$$\mathcal{R}_{v}(F(x)) := \frac{\partial F(x + t\cdot v)}{\partial t}\bigg\vert_{t = 0} = \mathrm{J}_{F}\: v $$
+	\item compute updates with (preconditioned) Conjugate Gradient method using forward- and backward-AD for efficient matrix-vector-products
+	%$$\mathcal{R}_{v}(F(x)) := \frac{\partial F(x + t\cdot v)}{\partial t}\bigg\vert_{t = 0} = \mathrm{J}_{F}\: v $$
 	\pause
 	\item computational costs for computing matrix-vector-products :
 	$$cost_{FAD}(\mathrm{J}_{F}\cdot v)\leq 2\:cost(F)$$
