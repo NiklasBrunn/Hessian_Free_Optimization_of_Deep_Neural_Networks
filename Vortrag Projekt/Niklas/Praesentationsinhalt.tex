@@ -1,4 +1,5 @@
 
+
 %\author[Niklas Brunn]{Nix}
 
 
@@ -13,12 +14,12 @@
   \frametitle{Optimization method}
   \begin{itemize}
   	\item Newton-type optimization, $k$-th step: 
-  	$$\theta_{k+1} = \theta_{k} - \mathrm{B}_{k}^{-1}\cdot\left(\frac{\partial}{\partial \theta}\:f_{D}\bigg\vert_{\theta = \theta_{k}}\right)^{\mathrm{T}} = \theta_{k} - \mathrm{B}_{k}^{-1}\cdot\nabla_{\theta} f_{D}$$
+  	$$\theta_{k+1} = \theta_{k} - \mathrm{B}_{k}^{-1}\cdot\nabla_{\theta_{k}} f_{D}$$%\theta_{k} - \mathrm{B}_{k}^{-1}\cdot\left(\frac{\partial}{\partial \theta}\:f_{D}\bigg\vert_{\theta = \theta_{k}}\right)^{\mathrm{T}} =$$
   	\pause
-  	\item Using damped Generalized Gauss Newton matrix as hessian approximation
+  	\item Using a damped Generalized Gauss Newton matrix as Hessian approximation
   	$$\mathrm{B} = \mathrm{DG} := \left(\frac{1}{N}\sum_{(x, y)\in\mathrm{D}}^{}\mathrm{J}_{\mathrm{R}_{x}(\theta)}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\mathrm{R}_{x}(\theta)}\right) + \lambda\:\mathrm{I}^{d\times d} $$
   	\item[] Newton step:
-  	$$\mathrm{DG}_{k}\cdot (\theta_{k+1} - \theta_{k}) = -\nabla_{\theta}f_{D}$$
+  	$$\mathrm{DG}_{k}\cdot (\theta_{k+1} - \theta_{k}) = -\nabla_{\theta_{k}}f_{D}$$
     %\pause
   	%\item updates with (preconditioned) Conjugate Gradient method using efficient matrix vector products with the $\mathcal{R}$-operator
   \end{itemize}
@@ -28,11 +29,11 @@
 \begin{frame}
 \frametitle{Implementation}
 \begin{itemize}
-	\item[] $$\underbrace{\mathrm{DG}_{k}\cdot (\theta_{k+1} - \theta_{k})} = -\nabla_{\theta}f_{D}$$
-	\item updates with (preconditioned) Conjugate Gradient method using efficient matrix vector products with the $\mathcal{R}$-operator
+	\item[] $$\underbrace{\mathrm{DG}_{k}\cdot (\theta_{k+1} - \theta_{k})} = -\nabla_{\theta_{k}}f_{D}$$
+	\item updates with (preconditioned) Conjugate Gradient method using efficient matrix-vector-products with the $\mathcal{R}$-operator
 	$$\mathcal{R}_{v}(F(x)) := \frac{\partial F(x + t\cdot v)}{\partial t}\bigg\vert_{t = 0} = \mathrm{J}_{F}\: v $$
 	\pause
-	\item computational costs for computing mat-vec-prod :
+	\item computational costs for computing matrix-vector-products :
 	$$cost_{FAD}(\mathrm{J}_{F}\cdot v)\leq 2\:cost(F)$$
 	$$cost_{BAD}(\mathrm{J}_{F}^{\mathrm{T}}\cdot v)\leq 3\:cost(F)$$
 \end{itemize}
