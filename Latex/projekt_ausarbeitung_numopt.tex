@@ -158,9 +158,9 @@ v^{\mathrm{T}}\:\mathrm{G}_{f_{x, y}}\:v &= v^{\mathrm{T}}\:\left( \mathrm{J}_{\
 For more information about the GGN one can read the article [5] (Chapter 8).
 
 \subsection{Levenberg-Marquardt algorithm }
-Even if we would use the GGN insted of the hessian in (13), which results in much faster runtime in contrast to the usage of the hessian and is much more memory efficient, we cannot ensure invertibility. Thus it it sometimes not possible to find a solution of the nonlinear system
+Even if we would use the GGN insted of the Hessian in (13), which results in much faster runtime in contrast to the usage of the Hessian and is much more memory efficient, we cannot ensure invertibility. Thus it it sometimes not possible to find a solution of the nonlinear system
 \begin{align}
-\mathrm{H}_{f_{x, y}}\cdot(\theta_{k+1} - \theta_{k}) = -t\cdot\mathrm{J}_{f_{x, y}}^{\mathrm{T}},
+\mathrm{H}_{f_{x, y}}\cdot(\theta_{k+1} - \theta_{k}) = -\mathrm{J}_{f_{x, y}}^{\mathrm{T}},
 \end{align}
 which is equivalent to the system stated in (13).
 For that reason we use a damped version of the GGN (DGGN) where we add an diagonal matrix with positive values on the diagonal, e.g.
@@ -183,7 +183,8 @@ where the Matrix $\left(\Lambda + \lambda\cdot\mathrm{I}\right)$ is a diagonal o
 Note that a choice of $\lambda>>0$ leads to a Newton step where we would nearly not move away from our current parameters, while a choice of $\lambda\approx 0$ leads to a full step using the GGN (see also in [2], chapter 6.7). In practice, we update the value $\lambda$ after each iteration step according to certain conditions which we will explain in more detail later.
 
 \subsection{Conjugate gradient method}
-TODO ... (CG Erklären, R-Op. und effiziente Matrix-V-P., CG-Methode Extras erklären)
+For an efficient calculation of the parameter updates we do not solve the equation stated in (13) but instead use the CG method to iteratively compute a solution to the problem stated in (22), where we replace the Hessian with the DGGN. 
+\\\textbf{TODO ... (CG Erklären, R-Op. und effiziente Matrix-V-P., CG-Methode Extras erklären)}
 
 \section {Implementation}
 (TODO: matching loss für die Experimente, GGN Matrix für die Experimente, Lambda-Berechnungsregel, Minibatches, ...)
