@@ -642,3 +642,11 @@ if plotting == True:
     plt.show()
 else:
     print("no plots were generated ...")
+
+
+#######
+# TODO:
+#######
+
+# 1) structure and clean code
+# 2) comment code
