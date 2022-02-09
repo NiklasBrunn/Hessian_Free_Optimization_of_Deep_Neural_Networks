@@ -446,3 +446,4 @@ print('test accuracy:', (10000 - wrong_classified) / 10000)
 ########################
 #plots and informations:
 ########################
+# TODO ...
