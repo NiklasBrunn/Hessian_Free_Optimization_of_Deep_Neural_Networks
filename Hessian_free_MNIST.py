@@ -1,3 +1,7 @@
+######################################################################
+#Implementation of our Hessian-Free Optimization algorithm with MNIST:
+######################################################################
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -9,23 +13,37 @@ import logging
 tf.get_logger().setLevel(logging.ERROR)
 
 ################
-#hyperparameter:
+#hyperparameters:
 ################
-Data_Seed = 13
-Model_Seed = 13
+# here one can set some parameters for the training, e.g. which
+# optimization method is used or what kind of Network architecture is used and
+# number of epochs, CG-steps, parameter seeds, ...
+
+Model_Seed = 1 # seed for the random initialisation of the model parameters.
 data_size = 60000
-batch_size = 250
-epochs = 1
-CG_steps = 3
-model_neurons = [784, 800, 10]
-fmv_version = 2 # options are 1, 2, 3 (gibt an welche fastmatvec Funktion benutzt wird)
-train_method = 'CG_R_Op' # options are: 'SGD', 'CG_naiv', 'CG_R_Op'
-Net = 'Dense' # options are 'Dense', 'CNN'
+batch_size = 250 # for the 2nd order optimization method we recommend
+#                  a relatively large batchsize, e.g. >= 250 up to 1000.
+#                  In our Experiments we used 250 (and 300).
+epochs = 5
+CG_steps = 3 # we recommend 3 for MNIST, more steps (e.g. 10) result in longer
+#              computation time but also the loss will decrease marginally
+
+fmv_version = 3 # options are 1, 2, 3 (version 3 works best!)
+#                (for the different versions see below in the code)
+train_method = 'fast_CG' # options are: 'SGD', 'CG_naiv', 'fast_CG'
+# -> with CG_naive we mean that we use an inefficient way to compute the
+#    matrix-vector-product, where we first compute and store all of the matrices
+#    in the product for the GGN and compute the matrix vector product GGN * v
+#    from right to left.
+# -> with fast_CG
+Net = 'Dense' # options are 'Dense', 'CNN' (we used Dense for our experiments).
+model_neurons = [784, 800, 10] # number of neurons when choosing Dense
 
 
 ####################
 #loading MNIST data:
 ####################
+#loading MNIST data for the Dense-Layer NN ...
 def mnist_data_generator_Dense():
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     x_train = tf.reshape(x_train, [60000, 784])/255
@@ -34,6 +52,7 @@ def mnist_data_generator_Dense():
     y_test = tf.one_hot(y_test, depth = 10)
     return (x_train[0:data_size, :], y_train[0:data_size, :]), (x_test, y_test)
 
+#loading MNIST data for the CNN ...
 def mnist_data_generator_CNN():
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
     x_train = x_train.reshape((len(x_train), 28, 28, 1)) / 255.
@@ -45,23 +64,30 @@ def mnist_data_generator_CNN():
 
 if Net == 'Dense':
     #DENSE:
-    tf.random.set_seed(Data_Seed)
     (x_train, y_train), (x_test, y_test) = mnist_data_generator_Dense()
 
 elif Net == 'CNN':
     #CNN:
-    tf.random.set_seed(Data_Seed)
     x_train, y_train, x_test, y_test = mnist_data_generator_CNN()
 
 
 ######################################
 #def. model loss and generating model:
 ######################################
+# multi-classification loss function: logitbinary-crossentropy,
+# softmax is contained in the loss function for numerical stability.
 def model_loss(y_true, y_pred):
-    #return tf.reduce_mean(-tf.math.reduce_sum(y_true * tf.math.log(tf.nn.softmax(y_pred)), axis=0)) #Loss hiermit viel besser, obwohl so nicht gedacht?!?
     return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_true, y_pred))
 
+#def model_loss(y_true, y_pred):
+    #return tf.reduce_mean(-tf.math.reduce_sum(y_true * tf.math.log(tf.nn.softmax(y_pred)),
+    #                                          axis=0))
+# the above loss function is just a different loss function that works surprisingly well but
+# has nothing to do with the actual task
+
+
 if Net == 'Dense':
+    # creating Dense-NN:
     tf.random.set_seed(Model_Seed)
 
     input_layer = tf.keras.Input(shape=(model_neurons[0]))
@@ -71,12 +97,14 @@ if Net == 'Dense':
     model = tf.keras.Model(input_layer, layer_2, name='Model')
 
 elif Net == 'CNN':
+    # creating CNN:
     tf.random.set_seed(Model_Seed)
 
     inputs = tf.keras.Input(shape=(28, 28, 1))
-    x = tf.keras.layers.Conv2D(16, (3, 3),
-                               strides=(2, 2), padding="same", activation='relu')(inputs)
-    x = tf.keras.layers.Conv2D(32, (3, 3), strides=(2, 2), padding="same", activation='relu')(x)
+    x = tf.keras.layers.Conv2D(16, (3, 3),strides=(2, 2),
+                               padding="same", activation='relu')(inputs)
+    x = tf.keras.layers.Conv2D(32, (3, 3), strides=(2, 2), padding="same",
+                               activation='relu')(x)
     x = tf.keras.layers.Conv2D(64, (3, 3), strides=(2, 2), activation='relu')(x)
     x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.Dense(64, activation='relu')(x)
@@ -98,19 +126,20 @@ lam = 1
 #######################################
 #Fast matrix-vector-products functions:
 #######################################
-# Naive Version; Berechnung von rechts nach links der Matrix-Vektor-Produkte,
-# mit vorab berechneten Matrizen (sehr langsam!)
-def fastmatvec_naiv(v, jac_net, jac_softmax, lam):
+# Naive version of the matrix-vector-product; computation of the m-v-p from right
+# to left. The matrices used here are computed and stored before (very slow!)
+def fastmatvec_naive(v, jac_net, jac_softmax, lam):
     prod1 = tf.linalg.matvec(jac_net, v)
     prod2 = tf.linalg.matvec(jac_softmax, prod1)
     prod3 = tf.linalg.matvec(jac_net, prod2, transpose_a=True)
     return tf.reduce_mean(prod3, axis=0) + lam * v
 
 
-# Version 1; Berechnung von rechts nach links: (J_Net)' * J_Softmax * J_Net * v
-# u := J_Net * v mit Forwarddiff
-# w := J_Softmax * u mit Forwarddiff
-# (J_Net)' * w mit Backwarddiff
+# Version 1; computation from right to left: (J_Net)' * J_Softmax * J_Net * v
+# u := J_Net * v with FAD
+# w := J_Softmax * u with FAD
+# (J_Net)' * w with BAD
+# (slower than version 2 and version 3!)
 def fastmatvec_V1(x_batch, y_batch, v, lam):
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
@@ -131,9 +160,10 @@ def fastmatvec_V1(x_batch, y_batch, v, lam):
     return v_new / batch_size + lam * v
 
 
-# Version 2; Berechnung von rechts nach links: (J_Net)' * J_Softmax(Net) * v
-# u := J_Softmax(Net) * v mit Forwarddiff
-# (J_Net)' * u mit Backwarddiff
+# Version 2; computation from right to left: (J_Net)' * J_Softmax(Net) * v
+# u := J_Softmax(Net) * v with FAD
+# (J_Net)' * u with BAD
+# (fast!)
 def fastmatvec_V2(x_batch, y_batch, v, lam):
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
@@ -150,9 +180,10 @@ def fastmatvec_V2(x_batch, y_batch, v, lam):
                                   for i, v in enumerate(GGN_times_v)], axis=0))
     return v_new / batch_size + lam * v
 
-# Version 3; Berechnung von rechts nach links: (J_Softmax(Net))' * J_Net * v
-# u := J_Net * v mit Forwarddiff
-# (J_Softmax(Net))' * u mit Backwarddiff
+# Version 3; computation from right to left: (J_Softmax(Net))' * J_Net * v
+# u := J_Net * v with FAD
+# (J_Softmax(Net))' * u with BAD
+# (works best!)
 def fastmatvec_V3(x_batch, y_batch, v, lam):
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]
@@ -173,35 +204,8 @@ def fastmatvec_V3(x_batch, y_batch, v, lam):
 ########################
 #CG-Algorithm functions:
 ########################
-# preconditioned_cg_method for fastmatvec_naiv
-def preconditioned_cg_method(A, B, x, b, min_steps, precision):
-    r = b - fastmatvec_naiv(x, A, B, lam)
-    y = r / (b ** 2 + lam)
-    d = y
-    i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
-    while i <= k or s >= precision*k or phi_history[-1] >= 0:
-        k = np.maximum(min_steps, int(i/min_steps))
-        z = fastmatvec_naiv(d, A, B, lam)
-        alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
-        x = x + alpha * d
-        r_new = r - alpha * z
-        y_new = r_new / (b ** 2 + lam)
-        beta = tf.tensordot(r_new, y_new, 1) / tf.tensordot(r, y, 1)
-        d = y_new + beta * d
-        r = r_new
-        y = y_new
-        phi_history = np.append(phi_history, np.array(
-            - 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1))))
-        if i >= k:
-            s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
-        else:
-            s = k
-        i += 1
-    return x
-
-# preconditioned_cg_method for every other fastmatvec function using the R-Op.
-def preconditioned_cg_method_R_Op(v, x_batch, y_batch, b, min_steps, precision):
+# preconditioned_cg_method for every other fastmatvec function using FAD and BAD.
+def fast_preconditioned_cg_method(v, x_batch, y_batch, b, min_steps, precision):
     if fmv_version == 1:
         r = b - fastmatvec_V1(x_batch, y_batch, v, lam)
     elif fmv_version == 2:
@@ -212,7 +216,8 @@ def preconditioned_cg_method_R_Op(v, x_batch, y_batch, b, min_steps, precision):
     y = r / (b ** 2 + lam)
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) +
+                                    tf.tensordot(v, r, 1))).reshape([1])
     while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         if fmv_version == 1:
@@ -240,22 +245,54 @@ def preconditioned_cg_method_R_Op(v, x_batch, y_batch, b, min_steps, precision):
     return v
 
 
+# preconditioned_cg_method for fastmatvec_naive:
+def preconditioned_cg_method_naive(A, B, x, b, min_steps, precision):
+    r = b - fastmatvec_naive(x, A, B, lam)
+    y = r / (b ** 2 + lam)
+    d = y
+    i, s, k = 0, 0, min_steps
+    phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) +
+                           tf.tensordot(x, r, 1))).reshape([1])
+    while i <= k or s >= precision*k or phi_history[-1] >= 0:
+        k = np.maximum(min_steps, int(i/min_steps))
+        z = fastmatvec_naive(d, A, B, lam)
+        alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
+        x = x + alpha * d
+        r_new = r - alpha * z
+        y_new = r_new / (b ** 2 + lam)
+        beta = tf.tensordot(r_new, y_new, 1) / tf.tensordot(r, y, 1)
+        d = y_new + beta * d
+        r = r_new
+        y = y_new
+        phi_history = np.append(phi_history, np.array(
+            - 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1))))
+        if i >= k:
+            s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
+        else:
+            s = k
+        i += 1
+    return x
+
+
 ##############
 #optimization:
 ##############
-# optimization using the precond._cg_method with R_Op
-def train_step_generalized_gauss_newton_R_Op(x, y, lam, update_old):
+# optimization using the fast precond._cg_method (with forward- and backward-AD)
+def train_step_fast_generalized_gauss_newton(x, y, lam, update_old):
     theta = model.trainable_variables
     with tf.GradientTape() as tape:
         loss = model_loss(y, model(x))
     grad_obj = tape.gradient(loss, theta)
-    grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
+    grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
+                          for i, g in enumerate(grad_obj)], axis=0))
 
-    update = preconditioned_cg_method_R_Op(update_old, x, y, grad_obj, CG_steps, 0.0005)
+    update = fast_preconditioned_cg_method(update_old, x, y, grad_obj,
+                                           CG_steps, 0.0005)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
-    theta_new = [p - tf.reshape(u, s) for (p, u, s) in zip(theta, theta_new, param_shape)]
+    theta_new = [p - tf.reshape(u, s)
+                 for (p, u, s) in zip(theta, theta_new, param_shape)]
 
     model.set_weights(theta_new)
 
@@ -279,9 +316,9 @@ def train_step_generalized_gauss_newton_R_Op(x, y, lam, update_old):
     return lam, update
 
 
-# optimization using the precond._cg_method with naiv implementation of fastmatvec
-# slow ...
-def train_step_generalized_gauss_newton(x, y, lam, update_old):
+# optimization using the precond._cg_method with the naive implementation of
+# fastmatvec (very slow!)
+def train_step_generalized_gauss_newton_naive(x, y, lam, update_old):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model(x)
         akt_out = tf.nn.softmax(y_pred)
@@ -296,20 +333,25 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
                      for i, h in enumerate(jac)], axis=2)
 
     grad_obj = tape.gradient(loss, theta)
-    grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
+    grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
+                          for i, g in enumerate(grad_obj)], axis=0))
 
-    update = preconditioned_cg_method(jac, jac_softmax, update_old, grad_obj, CG_steps, 0.0005)
+    update = preconditioned_cg_method_naive(jac,
+                                            jac_softmax, update_old, grad_obj,
+                                            CG_steps, 0.0005)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
-    theta_new = [p - tf.reshape(u, s) for (p, u, s) in zip(theta, theta_new, param_shape)]
+    theta_new = [p - tf.reshape(u, s)
+                 for (p, u, s) in zip(theta, theta_new, param_shape)]
 
     model.set_weights(theta_new)
 
     impr = loss - model_loss(y,  model(x))
 
     rho = impr / (tf.tensordot(grad_obj, update, 1) +
-                  tf.tensordot(update, fastmatvec_naiv(update, jac, jac_softmax, 0), 1))
+                  tf.tensordot(update, fastmatvec_naive(update,
+                                                        jac, jac_softmax, 0), 1))
 
     if rho > 0.75:
         lam /= 1.5
@@ -358,12 +400,14 @@ for epoch in range(epochs):
         if train_method == 'CG_naiv':
             #fastmatvec naiv (slow ...)
             t = time.time()
-            lam, update_old = train_step_generalized_gauss_newton(
+            lam, update_old = train_step_generalized_gauss_newton_naive(
                 x_train[start: end], y_train[start: end], lam, update_old)
             elapsed = time.time() - t
             print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
                                                               1).zfill(len(str(epochs))), epochs, elapsed))
-            wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) - np.argmax(tf.nn.softmax(model.predict(x_test)), axis=1) !=0, 1, 0))
+            wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) -
+                                               np.argmax(tf.nn.softmax(model.predict(x_test)),
+                                                         axis=1) !=0, 1, 0))
             print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
 
         elif train_method == 'SGD':
@@ -373,18 +417,21 @@ for epoch in range(epochs):
             elapsed = time.time() - t
             print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, elapsed))
-            wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) - np.argmax(tf.nn.softmax(model.predict(x_test)), axis=1) !=0, 1, 0))
+            wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) -
+                                               np.argmax(tf.nn.softmax(model.predict(x_test)),
+                                                         axis=1) !=0, 1, 0))
             print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
 
         else:
-            #fastmatvec with R_Op.
             t = time.time()
-            lam, update_old = train_step_generalized_gauss_newton_R_Op(
+            lam, update_old = train_step_fast_generalized_gauss_newton(
                 x_train[start: end], y_train[start: end], lam, update_old)
             elapsed = time.time() - t
             print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, elapsed))
-            wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) - np.argmax(tf.nn.softmax(model.predict(x_test)), axis=1) !=0, 1, 0))
+            wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) -
+                                               np.argmax(tf.nn.softmax(model.predict(x_test)),
+                                               axis=1) !=0, 1, 0))
             print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
 
 
