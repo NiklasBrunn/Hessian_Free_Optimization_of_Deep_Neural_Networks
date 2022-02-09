@@ -1,3 +1,8 @@
+###########################################################################
+#here we contain old or unused code that may be usefull or nice to have ...
+###########################################################################
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
