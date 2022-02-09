@@ -1,6 +1,6 @@
-######################################################################
-#Implementation of our Hessian-Free Optimization algorithm with MNIST:
-######################################################################
+##############################################################
+#Hessian-Free Optimization algorithm for MNIST classification:
+##############################################################
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,6 +18,11 @@ tf.get_logger().setLevel(logging.ERROR)
 # here one can set some parameters for the training, e.g. which
 # optimization method is used or what kind of Network architecture is used and
 # number of epochs, CG-steps, parameter seeds, ...
+# After setting these hyperparameters one can run the code and the training of
+# the chosen NN will start. Training will be displayed in the console with
+# some characteristic values (computation time for each iteration, test loss
+# per iteration [if better than before], train loss per epoch, number of wrong
+# classified MNIST numbers)
 
 Model_Seed = 1 # seed for the random initialisation of the model parameters.
 data_size = 60000
