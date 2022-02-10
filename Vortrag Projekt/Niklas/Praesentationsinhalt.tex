@@ -1,6 +1,4 @@
 
-
-
 %\author[Niklas Brunn]{Nix}
 
 
@@ -17,9 +15,9 @@
   	\item Newton-type optimization, $k$-th step: 
   	$$\theta_{k+1} = \theta_{k} - \mathrm{B}_{k}^{-1}\cdot\nabla_{\theta_{k}} f_{D},$$%\theta_{k} - \mathrm{B}_{k}^{-1}\cdot\left(\frac{\partial}{\partial \theta}\:f_{D}\bigg\vert_{\theta = \theta_{k}}\right)^{\mathrm{T}} =$$
   	\pause
-  	\item[] with
+  	\item[] the Hessian approximation is  a damped version of the Generalised Gauss Newton matrix 
   	$$\mathrm{B} := \left(\frac{1}{N}\sum_{(x, y)\in\mathrm{D}}^{}\mathrm{J}_{\mathrm{R}_{x}(\theta)}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\mathrm{R}_{x}(\theta)}\right) + \lambda\:\mathrm{I}^{d\times d} $$
-  	\item equivalent formulation of the $k$-th step:
+  	\item Equivalent formulation of the $k$-th step:
   	$$B_{k}\cdot (\theta_{k+1} - \theta_{k}) = -\nabla_{\theta_{k}}f_{D}$$
     %\pause
   	%\item updates with (preconditioned) Conjugate Gradient method using efficient matrix vector products with the $\mathcal{R}$-operator
@@ -34,7 +32,7 @@
 	\item We approximate the solution of this linear system with the (preconditioned) Conjugate gradient method
 	%$$\mathcal{R}_{v}(F(x)) := \frac{\partial F(x + t\cdot v)}{\partial t}\bigg\vert_{t = 0} = \mathrm{J}_{F}\: v $$
 	\pause
-	\item here we can use efficient matrix-vector-products for computational efficience using Forward- and Backward-AD
+	\item Therefore we use efficient matrix-vector-products for extra computational efficiency using Forward- and Backward-AD
 \end{itemize}
 \end{frame}
   
