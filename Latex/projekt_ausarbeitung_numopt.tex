@@ -8,6 +8,9 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{hyperref}
+%\usepackage{algorithm}
+\usepackage{algorithm2e}
+\usepackage{algorithmic}
 \DeclareMathOperator*{\argmin}{arg\,min}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
@@ -104,7 +107,7 @@ For later purposes we need to calculate the Jacobian or. the gradient of the OL 
 \begin{align}
 \frac{\partial}{\partial\theta}f_{x, y}(\theta) = \mathrm{J}_{f_{x, y}}.
 \end{align}
-Note that due to the linearity of the derivative, the results can be extended without problems to the case where the whole data set is considered.
+Note that due to the linearity of the derivative, the results can be extended without problems to the case where the whole data set or a batched version of the whole data set is considered.
 Applying the chain rule we can rewrite the Jacobian in (9) to
 \begin{align}
 \mathrm{J}_{f_{x, y}} &= \mathrm{J}_{\mathrm{L}_{y}\circ \:\text{akt} \:\circ\:\mathrm{R}_{x}} = \mathrm{J}_{\mathrm{L}_{y}} \: \mathrm{J}_{\text{akt}} \: \mathrm{J}_{\mathrm{R}_{x}},\\
@@ -118,7 +121,7 @@ for a matrix $A$ and a vector $b$ which both do not depend on the parameters $\t
 The concept of matching loss functions will helpe us later in the implementation of the method. We will also see that many of the well known loss functions used for DNN optimization match their output-nonlinearity, e.g. the squared error loss function and crossentropy loss function with previous softmax-activation function.
 
 
-\section{$2^{\text{nd}}$-order optimization}
+\section{Hessian-Free optimization method}
 In this section we want to give the reader a compact presentation of the different components used in the presented method. We will briefly review Newton`s method and go over the advantages and disadvantages of the usage of the Hessian matrix, and then introduce the necessary theory for the efficient $2^{\text{nd}}$-order optimization method. For a more detailed introduction in Newton-type optimization we refer the reader to [2] (Chapter 7), and [4] for details about the problems with pathological curvature. 
 
 \subsection{Newton's method}\label{AA}
@@ -157,14 +160,14 @@ v^{\mathrm{T}}\:\mathrm{G}_{f_{x, y}}\:v &= v^{\mathrm{T}}\:\left( \mathrm{J}_{\
 &= \left(\mathrm{J}_{\hat{y}_{x}\:v}\right)^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\left(\mathrm{J}_{\hat{y}_{x}\:v}\right) \\
 &\geq 0.
 \end{align}
-For more information about the GGN one can read the article [5] (Chapter 8).
+For more information about the GGN we recommend chapter 8 in [5] .
 
 \subsection{Levenberg-Marquardt algorithm }
-Even if we would use the GGN insted of the Hessian in (13), which results in much faster runtime in contrast to the usage of the Hessian and is much more memory efficient, we cannot ensure invertibility. Thus it it sometimes not possible to find a solution of the nonlinear system
+Even if we would use the GGN insted of the Hessian in (13), which results in much faster runtime in contrast to the usage of the Hessian and is much more memory efficient, we cannot ensure invertibility. Thus it it sometimes not possible to find a solution of the linear system
 \begin{align}
-\mathrm{H}_{f_{x, y}}\cdot(\theta_{k+1} - \theta_{k}) = -\mathrm{J}_{f_{x, y}}^{\mathrm{T}},
+\mathrm{G}_{f_{x, y}}\cdot(\theta_{k+1} - \theta_{k}) = -\mathrm{J}_{f_{x, y}}^{\mathrm{T}},
 \end{align}
-which is equivalent to the system stated in (13).
+which is equivalent to the system stated in (13) using the GGN insted of the Hessian.
 For that reason we use a damped version of the GGN (DGGN) where we add an diagonal matrix with positive values on the diagonal, e.g.
 \begin{align}
 \mathrm{DG}_{f_{x, y}} := \mathrm{G}_{f_{x, y}} + \lambda\cdot\mathrm{I}^{d\times d},
@@ -184,9 +187,21 @@ with an orthogonal Matrix $\mathrm{U}\in\mathbb{R}^{d\times d}$ and a diagonal M
 where the Matrix $\left(\Lambda + \lambda\cdot\mathrm{I}\right)$ is a diagonal one with only positive entries on the diagonal. Therefore the determinant of the produkt of the matrices in the last term is positive and as a consequence we get that the DGGN is positive definite and invertible.
 Note that a choice of $\lambda>>0$ leads to a Newton step where we would nearly not move away from our current parameters, while a choice of $\lambda\approx 0$ leads to a full step using the GGN (see also in [2], chapter 6.7). In practice, we update the value $\lambda$ after each iteration step according to certain conditions which we will explain in more detail later.
 
-\subsection{Conjugate gradient method}
-For an efficient calculation of the parameter updates we do not solve the equation stated in (13) but instead use the CG method to iteratively compute a solution to the problem stated in (22), where we replace the Hessian with the DGGN. 
+\subsection{Conjugate Gradient method}
+\textbf{TODO ... (CG Erklären, R-Op. und effiziente Matrix-V-P., CG-Methode Extras erklären)}
+For an efficient approximation of the parameter updates we do not compute the left term of the equation stated in (13) but instead use the CG method to iteratively approximate the solution of the linear system stated in (22), where we replace the GGN with the DGGN. Given a positive definite and symmetric matrix $A\in \mathbb{R}^{n\times n}$ we can approximate the unique solution of the linear system 
+\begin{align}
+A\:x = b
+\end{align}
+within 
 \\\textbf{TODO ... (CG Erklären, R-Op. und effiziente Matrix-V-P., CG-Methode Extras erklären)}
+
+\subsection{Mini-batches}
+If we are facing a large observation data set with $N>>0$, it is common to split the data set into batches $\mathrm{M}\subset\mathrm{D}$ containing only a few random samples $M<<N$ of the entire data and apply the optimization method to each of the generated batches for each iteration. The partition of $\mathrm{D}$ into smaler batches is called a mini-batch szenario, where $M$ denotes the batchsize of the mini-batches. For each mini-batch $\mathrm{M}$ the DGGN in (23) becomes
+\begin{align}
+\mathrm{DG}_{f_{\mathrm{M}}} := \frac{1}{M}\sum_{(x, y)\in \mathrm{M}}^{}\mathrm{G}_{f_{x, y}} + \lambda\cdot\mathrm{I}^{d\times d}.
+\end{align}
+As mentioned in [3], the batch size should be relatively large to capture enough information about the curvature of the OL. 
 
 \section {Implementation}
 (TODO: matching loss für die Experimente, GGN Matrix für die Experimente, Lambda-Berechnungsregel, Minibatches, ...)
@@ -237,6 +252,89 @@ quantities and units. For example, write ``Temperature (K)'', not
 ``Temperature/K''.
 
 \section{Experiments}
+TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
+
+\RestyleAlgo{ruled}
+\begin{algorithm}
+	\SetKwInOut{Input}{Input}
+	\SetKwInOut{Output}{Output}
+	\SetKwInOut{CG}{\textbf{pre-CG-result}}
+	\SetKwInOut{LAM}{\textbf{$\lambda$-update($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
+	\caption{Hessian-Free pseudocode for (8)}\label{alg:one}
+	\Input{$\mathrm{D}$, $\theta_{0}$, $\lambda$, epochs}
+    \For{epoch in epochs}{
+    	$k\gets 0$\\
+	    \For{$(x, y)$ in $\mathrm{D}$}{
+	        $\mathrm{J}_{f_{x, y}}^{\mathrm{T}}(\theta_{k})\:$(compute with BAD)\\
+            \CG{$\Delta\theta_{k+1}$}
+            $\theta_{k+1}\gets \theta_{k} + \Delta\theta_{k+1}$\\
+            \LAM{$\lambda$}
+            $k\gets k+1$
+        }	
+       $\theta_{0} \gets \theta_{N}$
+    }
+    \Output{$\theta^{trained}$}
+\end{algorithm}
+
+\begin{algorithm}
+	\SetKwInOut{Input}{Input}
+	\SetKwInOut{Output}{Output}
+	\SetKwInOut{CG}{\textbf{pre-CG-result}}
+	\SetKwInOut{LAM}{\textbf{$\lambda$-update($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
+	\caption{(Mini-batch)-Hessian-Free pseudocode for (8)}\label{alg:two}
+	\Input{$\mathrm{D}_{batched}$, $M$, $\theta_{0}$, $\lambda$, epochs}
+	\For{$epoch$ in epochs}{
+		$k\gets 0$\\
+		\For{$\mathrm{M}$ in $\mathrm{D}_{batched}$}{
+		    $\mathrm{J}_{f_{\mathrm{M}}}^{\mathrm{T}}(\theta_{k})\:$(compute with BAD)\\
+			\CG{$\Delta\theta_{k+1}$}
+			$\theta_{k+1}\gets \theta_{k} + \Delta\theta_{k+1}$\\
+			\LAM{$\lambda$}    
+			$k\gets k+1$
+		}
+	    $\theta_{0}\gets \theta_{M}$	
+	}
+    \Output{$\theta^{trained}$}
+\end{algorithm}
+
+\begin{algorithm}
+	\SetKwInOut{Input}{Input}
+	\SetKwInOut{Output}{Output}
+	\SetKwInOut{CG}{\textbf{pre-CG-result}}
+	\SetKwInOut{LAM}{\textbf{$\lambda$-update}}
+	\SetKwInOut{FMV}{\textbf{fast-mat-vec-out($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
+	\caption{Condition for $\lambda$-updates}\label{alg:three}
+	\Input{$\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$}
+	\FMV{$\mathrm{DG}_{f_{\mathrm{M}}}\:\Delta\theta_{k+1}$}
+	$A\gets\mathrm{DG}_{f_{\mathrm{M}}}\:\Delta\theta_{k+1}$\\
+		\text{}\\
+	$\rho\gets \frac{f_{\mathrm{M}}(\theta_{k}+\Delta\theta_{k+1})\:-\: f_{\mathrm{M}}(\theta_{k})}{\mathrm{J}_{f_{\mathrm{M}}}^{\mathrm{T}}\cdot\Delta\theta_{k+1} + \frac{1}{2}\Delta\theta_{k+1}^{\mathrm{T}}\cdot A}$\\
+	\text{}\\
+	\If{$\rho<\frac{1}{4}$}{$\lambda\gets \frac{3}{2}\:\lambda$}
+	\ElseIf{$\rho>\frac{3}{4}$}{$\lambda\gets \frac{2}{3}\:\lambda$}
+	\Output{$\lambda$}
+\end{algorithm}
+
+\begin{algorithm}
+	\SetKwInOut{Input}{Input}
+	\SetKwInOut{Output}{Output}
+	\SetKwInOut{CG}{\textbf{pre-CG-result}}
+	\SetKwInOut{LAM}{\textbf{$\lambda$-update($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
+	\caption{Fast matrix-vector produkts (DGGN multiplied with an arbitrary vector $v$)}\label{alg:four}
+	\Input{$\mathrm{M}$, $v$, $\lambda$}
+	$\mathrm{G}_{f_{\mathrm{M}}}\:v$ (compute with FAD and BAD)\\
+	$\mathrm{DG}_{f_{\mathrm{M}}}\: v \gets \mathrm{G}_{f_{\mathrm{M}}}\: v + \lambda\cdot\mathrm{I}^{d\times d}\:v$\\
+	\Output{$\mathrm{DG}_{f_{\mathrm{M}}}\: v$}
+\end{algorithm}
+
+\begin{algorithm}
+	\SetKwInOut{Input}{Input}
+	\SetKwInOut{Output}{Output}
+	\SetKwInOut{CG}{\textbf{pre-CG-result}}
+	\SetKwInOut{LAM}{\textbf{$\lambda$-update($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
+	\caption{(preconditioned) CG method}\label{alg:five}
+	
+\end{algorithm}
 
 \subsection{Simple simulated data}
 ...
