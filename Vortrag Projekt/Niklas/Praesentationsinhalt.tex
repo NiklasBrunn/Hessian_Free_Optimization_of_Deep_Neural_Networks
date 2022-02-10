@@ -1,4 +1,6 @@
 
+
+
 %\author[Niklas Brunn]{Nix}
 
 
@@ -13,12 +15,12 @@
   \frametitle{Optimization method}
   \begin{itemize}
   	\item Newton-type optimization, $k$-th step: 
-  	$$\theta_{k+1} = \theta_{k} - \mathrm{B}_{k}^{-1}\cdot\nabla_{\theta_{k}} f_{D}$$%\theta_{k} - \mathrm{B}_{k}^{-1}\cdot\left(\frac{\partial}{\partial \theta}\:f_{D}\bigg\vert_{\theta = \theta_{k}}\right)^{\mathrm{T}} =$$
+  	$$\theta_{k+1} = \theta_{k} - \mathrm{B}_{k}^{-1}\cdot\nabla_{\theta_{k}} f_{D},$$%\theta_{k} - \mathrm{B}_{k}^{-1}\cdot\left(\frac{\partial}{\partial \theta}\:f_{D}\bigg\vert_{\theta = \theta_{k}}\right)^{\mathrm{T}} =$$
   	\pause
-  	\item Using a damped Generalized Gauss Newton matrix as Hessian approximation
-  	$$\mathrm{B} = \mathrm{DG} := \left(\frac{1}{N}\sum_{(x, y)\in\mathrm{D}}^{}\mathrm{J}_{\mathrm{R}_{x}(\theta)}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\mathrm{R}_{x}(\theta)}\right) + \lambda\:\mathrm{I}^{d\times d} $$
-  	\item[] Newton step:
-  	$$\mathrm{DG}_{k}\cdot (\theta_{k+1} - \theta_{k}) = -\nabla_{\theta_{k}}f_{D}$$
+  	\item[] with
+  	$$\mathrm{B} := \left(\frac{1}{N}\sum_{(x, y)\in\mathrm{D}}^{}\mathrm{J}_{\mathrm{R}_{x}(\theta)}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\mathrm{R}_{x}(\theta)}\right) + \lambda\:\mathrm{I}^{d\times d} $$
+  	\item equivalent formulation of the $k$-th step:
+  	$$B_{k}\cdot (\theta_{k+1} - \theta_{k}) = -\nabla_{\theta_{k}}f_{D}$$
     %\pause
   	%\item updates with (preconditioned) Conjugate Gradient method using efficient matrix vector products with the $\mathcal{R}$-operator
   \end{itemize}
@@ -28,13 +30,11 @@
 \begin{frame}
 \frametitle{Implementation details and computational efficiency}
 \begin{itemize}
-	\item[] $$\mathrm{DG}_{k}\cdot \Delta\theta = -\nabla_{\theta_{k}}f_{D}$$
-	\item approximate updates with (preconditioned) Conjugate Gradient method using forward- and backward-AD for efficient matrix-vector-products
+	\item[] $$B_{k}\cdot \Delta\theta = -\nabla_{\theta_{k}}f_{D}$$
+	\item We approximate the solution of this linear system with the (preconditioned) Conjugate gradient method
 	%$$\mathcal{R}_{v}(F(x)) := \frac{\partial F(x + t\cdot v)}{\partial t}\bigg\vert_{t = 0} = \mathrm{J}_{F}\: v $$
 	\pause
-	\item computational costs for computing matrix-vector-products :
-	$$cost_{FAD}(\mathrm{J}_{F}\cdot v)\leq 2\:cost(F)$$
-	$$cost_{BAD}(\mathrm{J}_{F}^{\mathrm{T}}\cdot v)\leq 3\:cost(F)$$
+	\item here we can use efficient matrix-vector-products for computational efficience using Forward- and Backward-AD
 \end{itemize}
 \end{frame}
   
