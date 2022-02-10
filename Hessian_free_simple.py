@@ -14,21 +14,19 @@ tf.get_logger().setLevel(logging.ERROR)
 #Hyperparameter:
 ################
 
-Data_Seed = 7
-Model_Seed = 7
-train_size = 1500
-test_size = 500
+Data_Seed = 1 # Seed for generating the train- and test-data.
+Model_Seed = 1 # Seed for the initialisation of the NN parameters
+
+train_size = 1500 # number of observations for training.
+test_size = 500 # number of observations for testing.
 batch_size = 100
-epochs = 250
-CG_steps = 3 # minimale Anzahl der Schritte in der CG-Methode.
+epochs = 2
+CG_steps = 3 # minimum number of steps in CG.
 model_neurons = [1, 15, 15, 1]
-num_updates = int(train_size / batch_size)
 
-outliers = False # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert.
-max_num_outliers = 100 # Maximale Anzahl der Outliers im generierten Datensatz.
-
-SGD_allowed = True # wenn True, dann wird SGD-Update performt!
-GN_allowed = True # wenn True, dann wird auch GN-Update nach dem SGD-Update performt!
+SGD_allowed = True # NN training with SGD only if SGD_allowed = True.
+GN_allowed = True # NN training with the Hessian-Free method only if
+#                   GN_allowed = True.
 gradient_cal = 'alternativ' # kann als 'standard' oder 'alternativ' gesetzt werden!
                           # wenn standard, dann wird der Gradient mit Rückwärts AD durch
                           # die ges. Objektfunktion berechnet, mit alternativ wird
@@ -39,44 +37,22 @@ GN_cal = 'R_Op' # wenn True, dann wird die GN-Matrix vor dem CG-update komplett 
               # ohne Verwendung der GN-Matrix!
               # wenn nicht False oder True dann wird mit dem R-Operator im CG-Verfahren
               # optimiert
-plotting = True # wenn True, dann werden die generierten Plots angezeigt!
+plotting = True # showing plots only if plotting is set to True!
+
 
 #########################################
 #Data generation (optional mit Outliern):
 #########################################
-
-def toy_data_generator(size, noise, outliers, max_num_outliers):
+# function for generating x^2 data with noise:
+def toy_data_generator(size, noise):
     x = tf.random.normal([size, model_neurons[0]])
-
-    if outliers == True:
-
-        vec = np.zeros(size)
-        outliers_index_vec = np.random.randint(0, size, max_num_outliers)
-
-        for j in range(max_num_outliers):
-
-            # y-Werte werden mit Normal-3-1-gezogenen Werten addiert
-            #vec[outliers_index_vec[j]] = np.random.normal(3, 1, 1)[0]
-
-            # y-Werte werden mit Normal-0-1-gezogenen Werten addiert
-            #vec[outliers_index_vec[j]] = np.random.normal(0, 1, 1)[0]
-
-            # y-Werte werden mit 6 addiert
-            vec[outliers_index_vec[j]] =  6.0
-
-        vec = tf.constant(vec, dtype=tf.float32, shape=[size, 1])
-        y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]]) + vec
-
-    else:
-
-        y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
-
+    y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
     return x, y
 
-tf.random.set_seed(Data_Seed) # Test und Trainingsdaten ziehen so verschidene x-Werte
-
-x_train, y_train = toy_data_generator(train_size, 0.1, outliers, max_num_outliers)
-x_test, y_test = toy_data_generator(test_size, 0, False, max_num_outliers)
+#generating train- and test-data:
+tf.random.set_seed(Data_Seed)
+x_train, y_train = toy_data_generator(train_size, 0.1)
+x_test, y_test = toy_data_generator(test_size, 0)
 
 
 
@@ -91,8 +67,10 @@ def model_loss(y_true, y_pred):
 tf.random.set_seed(Model_Seed)
 
 input_layer = tf.keras.Input(shape=(model_neurons[0],))
-layer_1 = tf.keras.layers.Dense(model_neurons[1], activation='relu')(input_layer)
-layer_2 = tf.keras.layers.Dense(model_neurons[2], activation='relu')(layer_1)
+layer_1 = tf.keras.layers.Dense(model_neurons[1],
+                                activation='relu')(input_layer)
+layer_2 = tf.keras.layers.Dense(model_neurons[2],
+                                activation='relu')(layer_1)
 layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
 
 model = tf.keras.Model(input_layer, layer_3, name='Model')
@@ -101,8 +79,10 @@ model.compile(loss=model_loss)
 model.summary()
 
 
-layer_shape = [(model_neurons[i], model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
-bias_shape = [(model_neurons[i+1]) for i in range(np.shape(model_neurons)[0]-1)]
+layer_shape = [(model_neurons[i], model_neurons[i+1])
+               for i in range(np.shape(model_neurons)[0]-1)]
+bias_shape = [(model_neurons[i+1])
+              for i in range(np.shape(model_neurons)[0]-1)]
 param_shape = [x for y in zip(layer_shape, bias_shape) for x in y]
 n_params = [np.prod(s) for s in param_shape]
 ind = np.insert(np.cumsum(n_params), 0, 0)
@@ -124,16 +104,21 @@ def efficient_hessian_vec(v, x, y, theta, lam):
         theta = model.trainable_variables
         grad = tape1.gradient(loss, theta)
 
-        grad_1 = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad)], axis=0))
+        grad_1 = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
+                                       for i, g in enumerate(grad)],
+                                      axis=0))
         mat_vec = tf.math.multiply(grad_1, tf.stop_gradient(v))
 
     mat_vec_res = tape2.gradient(mat_vec, theta)
-    mat_vec_res = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(mat_vec_res)], axis=0))
+    mat_vec_res = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
+                                        for i, g in enumerate(mat_vec_res)],
+                                       axis=0))
     return mat_vec_res + lam * v
 
 
 def hessappr_vec(v, jac, lam):
-    return tf.reduce_mean(tf.linalg.matvec(jac, tf.linalg.matvec(jac, v), transpose_a=True), axis=0) + lam * v
+    return tf.reduce_mean(tf.linalg.matvec(jac, tf.linalg.matvec(jac, v),
+                                           transpose_a=True), axis=0) + lam * v
 
 def fastmatvec(x_batch, y_batch, v, lam):
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
@@ -281,19 +266,25 @@ def train_step_Hesse_vec(x, y, lam, update_old):
     theta = model.trainable_variables
 
     grad_obj = tape.gradient(loss, theta)
-    grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
+    grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
+                                     for i, g in enumerate(grad_obj)],
+                                    axis=0))
 
-    update = preconditioned_cg_method_hess(update_old, grad_obj, CG_steps, 0.0005, x, y, theta)
+    update = preconditioned_cg_method_hess(update_old, grad_obj,
+                                           CG_steps, 0.0005, x, y, theta)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
-    theta_new = [p - tf.reshape(u, s) for (p, u, s) in zip(theta, theta_new, param_shape)]
+    theta_new = [p - tf.reshape(u, s)
+                 for (p, u, s) in zip(theta, theta_new, param_shape)]
 
     model.set_weights(theta_new)
 
     impr = loss - model_loss(y,  model(x))
 
-    rho = impr / (tf.tensordot(grad_obj, update, 1) + tf.tensordot(update, efficient_hessian_vec(update, x, y, theta, 0), 1))
+    rho = impr / (tf.tensordot(grad_obj, update, 1) +
+                  tf.tensordot(update,
+                               efficient_hessian_vec(update, x, y, theta, 0), 1))
 
     if rho > 0.75:
         lam /= 1.5
@@ -327,33 +318,37 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
     if gradient_cal == 'standard':
         # Gradient berechnet durch Jacobi_Vector_Produkt:
-        grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True), axis=0))
-
-    elif gradient_cal == 'alternativ':
-        # (optional) Gradient mit Tape berechnen (!! ist gleich schnell):
-        grad_obj = tape.gradient(loss, theta)
-        grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1]) for i, g in enumerate(grad_obj)], axis=0))
+        grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True),
+                                             axis=0))
 
     else:
-        print('es wird kein Gradient berechnet, da <gradient_call> nicht richtig definiert ist!')
+        # (optional) Gradient mit Tape berechnen (!! ist gleich schnell):
+        grad_obj = tape.gradient(loss, theta)
+        grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
+                                         for i, g in enumerate(grad_obj)],
+                                        axis=0))
 
 
     if GN_cal == True:
         # (optional) mit vorher berechneter GN-Matrix (!!dauert signifikant länger oben):
         # GN-Matrix optional berechnet
         GN = tf.reduce_mean(tf.matmul(jac, jac, transpose_a = True), axis=0)
-        update = preconditioned_cg_method_complete_GN(GN, update_old, grad_obj, CG_steps, 0.0005)
+        update = preconditioned_cg_method_complete_GN(GN, update_old, grad_obj,
+                                                      CG_steps, 0.0005)
 
     elif GN_cal == False:
-        update = preconditioned_cg_method(jac, update_old, grad_obj, CG_steps, 0.0005)
+        update = preconditioned_cg_method(jac, update_old, grad_obj,
+                                          CG_steps, 0.0005)
     else:
-        update = preconditioned_cg_method_R_Op(x, y, update_old, grad_obj, CG_steps, 0.0005)
+        update = preconditioned_cg_method_R_Op(x, y, update_old, grad_obj,
+                                               CG_steps, 0.0005)
 
 
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
-    theta_new = [p - tf.reshape(u, s) for (p, u, s) in zip(theta, theta_new, param_shape)]
+    theta_new = [p - tf.reshape(u, s)
+                 for (p, u, s) in zip(theta, theta_new, param_shape)]
 
     model.set_weights(theta_new)
 
@@ -391,9 +386,11 @@ def train_step_gradient_descent(x, y, eta):
 ##########
 #TRAINING:
 ##########
+num_updates = int(train_size / batch_size)
 
 #Erstellen der Data-Plots:
-f, ((ax0, ax1, ax3, ax5), (ax7, ax2, ax4, ax6)) = plt.subplots(2, 4, figsize=(18, 8))
+f, ((ax0, ax1, ax3, ax5), (ax7, ax2, ax4, ax6)) = plt.subplots(2, 4,
+                                                               figsize=(18, 8))
 
 a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
 ax0.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
@@ -415,10 +412,12 @@ if SGD_allowed == True:
     for epoch in range(epochs):
         train_loss = model_loss(y_train, model.predict(x_train))
         print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
-                                                                   1).zfill(len(str(epochs))), epochs, train_loss))
+                                                                   1).zfill(len(str(epochs))),
+                                                                epochs, train_loss))
         test_loss = model_loss(y_test, model.predict(x_test))
         print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
-                                                                   1).zfill(len(str(epochs))), epochs, test_loss))
+                                                                   1).zfill(len(str(epochs))),
+                                                               epochs, test_loss))
 
         test_loss_vec_SGD[epoch] = test_loss
         train_loss_vec_SGD[epoch] = train_loss
@@ -497,10 +496,12 @@ if GN_allowed == True:
     for epoch in range(epochs):
         train_loss = model_loss(y_train, model.predict(x_train))
         print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
-                                                                   1).zfill(len(str(epochs))), epochs, train_loss))
+                                                                   1).zfill(len(str(epochs))),
+                                                                epochs, train_loss))
         test_loss = model_loss(y_test, model.predict(x_test))
         print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
-                                                                   1).zfill(len(str(epochs))), epochs, test_loss))
+                                                                   1).zfill(len(str(epochs))),
+                                                               epochs, test_loss))
 
         test_loss_vec_GN[epoch] = test_loss
         train_loss_vec_GN[epoch] = train_loss
