@@ -401,16 +401,15 @@ ax0.plot(a, a**2, label='Ground Truth', c='green')
 
 
 #SGD-TRAINING:
-#t = time.time()
 test_loss_vec_SGD = np.zeros(epochs)
 train_loss_vec_SGD = np.zeros(epochs)
 epoch_vec_SGD = [i for i in range(epochs)]
 time_vec_SGD = np.zeros(epochs)
 
-train_time_SGD = np.zeros(epochs*num_updates)
-error_history_test_SGD = np.zeros(epochs*num_updates)
-error_history_train_SGD = np.zeros(epochs*num_updates)
-epochs_SGD = np.zeros(epochs*num_updates)
+#train_time_SGD = np.zeros(epochs*num_updates)
+#error_history_test_SGD = np.zeros(epochs*num_updates)
+#error_history_train_SGD = np.zeros(epochs*num_updates)
+#epochs_SGD = np.zeros(epochs*num_updates)
 
 if SGD_allowed == True:
     for epoch in range(epochs):
@@ -426,12 +425,9 @@ if SGD_allowed == True:
 
         t = time.time()
         for i in range(num_updates):
-            #test_loss = model_loss(y_test, model.predict(x_test))
-            #print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
-            #                                                           1).zfill(len(str(epochs))), epochs, test_loss))
 
-            error_new_train_SGD = model_loss(y_train, model.predict(x_train))
-            error_new_test_SGD = model_loss(y_test, model.predict(x_test))
+            #error_new_train_SGD = model_loss(y_train, model.predict(x_train))
+            #error_new_test_SGD = model_loss(y_test, model.predict(x_test))
 
             start = i * batch_size
             end = start + batch_size
@@ -440,10 +436,10 @@ if SGD_allowed == True:
             train_step_gradient_descent(x_train[start: end], y_train[start: end], 0.3)
             elapseds = time.time() - s
 
-            train_time_SGD[epoch*num_updates+i] = elapseds
-            error_history_train_SGD[epoch*num_updates+i] = error_new_train_SGD
-            error_history_test_SGD[epoch*num_updates+i] = error_new_test_SGD
-            epochs_SGD[epoch*num_updates+i] = epoch
+            #train_time_SGD[epoch*num_updates+i] = elapseds
+            #error_history_train_SGD[epoch*num_updates+i] = error_new_train_SGD
+            #error_history_test_SGD[epoch*num_updates+i] = error_new_test_SGD
+            #epochs_SGD[epoch*num_updates+i] = epoch
 
         elapsed = time.time() - t
         print('estimated time for the update step:', elapsed, 'sec')
@@ -452,21 +448,20 @@ if SGD_allowed == True:
         else:
             time_vec_SGD[epoch] = time_vec_SGD[epoch - 1] + elapsed
 
-    #print(time_vec_SGD)
-    #elapsed = time.time() - t
-    #print(elapsed)
 
     # prediction-plot of the model:
     x = model.predict(a)
     ax0.plot(a, x, label='Prediction SGD', c='blue')
 
-np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//train_time_SGD.npy', train_time_SGD)
-np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_train_SGD.npy', error_history_train_SGD)
-np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_test_SGD.npy', error_history_test_SGD)
-np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_SGD.npy', epochs_SGD)
+#np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//train_time_SGD.npy',
+#          train_time_SGD)
+#np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_train_SGD.npy',
+#          error_history_train_SGD)
+#np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_test_SGD.npy',
+#           error_history_test_SGD)
+#np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_SGD.npy',
+#           epochs_SGD)
 
-#a = np.loadtxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_SGD.npy')
-#print(a)
 
 #GN-TRAINING:
 
@@ -475,8 +470,10 @@ np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_SGD.npy', epochs_SGD
 tf.random.set_seed(Model_Seed)
 
 input_layer = tf.keras.Input(shape=(model_neurons[0],))
-layer_1 = tf.keras.layers.Dense(model_neurons[1], activation='relu')(input_layer)
-layer_2 = tf.keras.layers.Dense(model_neurons[2], activation='relu')(layer_1)
+layer_1 = tf.keras.layers.Dense(model_neurons[1],
+                                activation='relu')(input_layer)
+layer_2 = tf.keras.layers.Dense(model_neurons[2],
+                                activation='relu')(layer_1)
 layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
 
 model = tf.keras.Model(input_layer, layer_3, name='Model')
@@ -484,16 +481,16 @@ model = tf.keras.Model(input_layer, layer_3, name='Model')
 model.compile(loss=model_loss)
 model.summary()
 
-#t = time.time()
+
 test_loss_vec_GN = np.zeros(epochs)
 train_loss_vec_GN = np.zeros(epochs)
 epoch_vec_GN = [i for i in range(epochs)]
 time_vec_GN = np.zeros(epochs)
 
-train_time_GN = np.zeros(epochs*num_updates)
-error_history_test_GN = np.zeros(epochs*num_updates)
-error_history_train_GN = np.zeros(epochs*num_updates)
-epochs_GN = np.zeros(epochs*num_updates)
+#train_time_GN = np.zeros(epochs*num_updates)
+#error_history_test_GN = np.zeros(epochs*num_updates)
+#error_history_train_GN = np.zeros(epochs*num_updates)
+#epochs_GN = np.zeros(epochs*num_updates)
 
 
 if GN_allowed == True:
@@ -510,12 +507,9 @@ if GN_allowed == True:
 
         t = time.time()
         for i in range(num_updates):
-            #test_loss = model_loss(y_test, model.predict(x_test))
-            #print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
-            #                                                           1).zfill(len(str(epochs))), epochs, test_loss))
 
-            error_new_train_GN = model_loss(y_train, model.predict(x_train))
-            error_new_test_GN = model_loss(y_test, model.predict(x_test))
+            #error_new_train_GN = model_loss(y_train, model.predict(x_train))
+            #error_new_test_GN = model_loss(y_test, model.predict(x_test))
 
             start = i * batch_size
             end = start + batch_size
@@ -525,10 +519,10 @@ if GN_allowed == True:
                 x_train[start: end], y_train[start: end], lam, update_old)
             elapseds = time.time() - s
 
-            train_time_GN[epoch*num_updates+i] = elapseds
-            error_history_train_GN[epoch*num_updates+i] = error_new_train_SGD
-            error_history_test_GN[epoch*num_updates+i] = error_new_test_SGD
-            epochs_GN[epoch*num_updates+i] = epoch
+            #train_time_GN[epoch*num_updates+i] = elapseds
+            #error_history_train_GN[epoch*num_updates+i] = error_new_train_SGD
+            #error_history_test_GN[epoch*num_updates+i] = error_new_test_SGD
+            #epochs_GN[epoch*num_updates+i] = epoch
 
         elapsed = time.time() - t
         print('estimated time for the update step:', elapsed, 'sec')
@@ -537,18 +531,19 @@ if GN_allowed == True:
         else:
             time_vec_GN[epoch] = time_vec_GN[epoch - 1] + elapsed
 
-    #print(time_vec_GN)
-    #elapsed = time.time() - t
-    #print(elapsed)
 
     # prediction-plot of the model:
     x = model.predict(a)
     ax0.plot(a, x, label='Prediction GN', c='orange')
 
-np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//train_time_SGD.npy', train_time_SGD)
-np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_train_SGD.npy', error_history_train_SGD)
-np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_test_SGD.npy', error_history_test_SGD)
-np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_SGD.npy', epochs_SGD)
+#np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//train_time_SGD.npy',
+#            train_time_SGD)
+#np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_train_SGD.npy',
+#           error_history_train_SGD)
+#np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_test_SGD.npy',
+#           error_history_test_SGD)
+#np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_SGD.npy',
+#           epochs_SGD)
 
 ax0.set_ylim(-0.6, 10)
 ax0.set_xlim(-np.sqrt(10), np.sqrt(10))
@@ -559,7 +554,6 @@ ax0.legend(loc='upper right')
 #######
 #PLOTS:
 #######
-
 ####Train_loss_epochs_plot:
 ax1.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r',label='SGD', linewidth=0.8)
 ax1.set_xlabel('Epochs')
