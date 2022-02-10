@@ -142,7 +142,8 @@ def preconditioned_cg_method_R_Op(x_batch, y_batch, v, b, min_steps, precision):
     y = r / (b ** 2 + lam)
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) +
+                                    tf.tensordot(v, r, 1))).reshape([1])
     while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = fastmatvec(x_batch, y_batch, d, lam)
@@ -172,7 +173,8 @@ def preconditioned_cg_method(A, x, b, min_steps, precision):
     y = r / (b ** 2 + lam)
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) +
+                                    tf.tensordot(v, r, 1))).reshape([1])
     while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = hessappr_vec(d, A, lam)
@@ -201,7 +203,8 @@ def preconditioned_cg_method_hess(v, b, min_steps, precision, xin, yin, theta):
     y = r / (b ** 2 + lam)
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) +
+                                    tf.tensordot(v, r, 1))).reshape([1])
     while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = efficient_hessian_vec(d, xin, yin, theta, lam)
@@ -229,7 +232,8 @@ def preconditioned_cg_method_complete_GN(GN, x, b, min_steps, precision):
     y = r / (b ** 2 + lam)
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))).reshape([1])
+    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) +
+                                    tf.tensordot(v, r, 1))).reshape([1])
     while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = tf.linalg.matvec(GN, d) + lam * d
