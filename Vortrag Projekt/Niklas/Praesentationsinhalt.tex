@@ -16,7 +16,7 @@
   	$$\theta_{k+1} = \theta_{k} - \mathrm{B}_{k}^{-1}\cdot\nabla_{\theta_{k}} f_{D},$$%\theta_{k} - \mathrm{B}_{k}^{-1}\cdot\left(\frac{\partial}{\partial \theta}\:f_{D}\bigg\vert_{\theta = \theta_{k}}\right)^{\mathrm{T}} =$$
   	\pause
   	\item[] the Hessian approximation is  a damped version of the Generalised Gauss Newton matrix 
-  	$$\mathrm{B} := \left(\frac{1}{N}\sum_{(x, y)\in\mathrm{D}}^{}\mathrm{J}_{\mathrm{R}_{x}(\theta)}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\mathrm{R}_{x}(\theta)}\right) + \lambda\:\mathrm{I}^{d\times d} $$
+  	$$\mathrm{B} := \left(\frac{1}{N}\sum_{(x, y)\in\mathrm{D}}^{}\mathrm{J}_{\mathrm{R}_{x}(\theta)}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{act}}}\:\mathrm{J}_{\mathrm{R}_{x}(\theta)}\right) + \lambda\:\mathrm{I}^{d\times d} $$
   	\item Equivalent formulation of the $k$-th step:
   	$$B_{k}\cdot (\theta_{k+1} - \theta_{k}) = -\nabla_{\theta_{k}}f_{D}$$
     %\pause
