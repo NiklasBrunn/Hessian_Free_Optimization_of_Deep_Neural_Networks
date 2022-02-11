@@ -1,3 +1,17 @@
+##########################################################################
+# This file contains some early work from the Hessian_free_simple.py -file
+##########################################################################
+
+# here we teste some runtime improvements where we calculated the matrix-
+# vector products in different ways and used different versions of the
+# CG method. Also we checked if we can get some improvements in runtime by
+# calculating the gradient of the loss in different ways.
+# We implemented, in contrast to our efficient method using fast-matrix-vector-
+# products, an alternative way where we compute and store the damped GGN first
+# and then calculate the matrix vector product (very slow ...)
+# We also just for fun implemented a way to generate some outliers to the
+# train data.
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -20,26 +34,27 @@ train_size = 1500
 test_size = 500
 batch_size = 100
 epochs = 2
-CG_steps = 3 # minimale Anzahl der Schritte in der CG-Methode.
+CG_steps = 3
 model_neurons = [1, 15, 15, 1]
 num_updates = int(train_size / batch_size)
 
-outliers = False # wenn True, dann werden in den Daten für die y-Werte Outlieres generiert.
-max_num_outliers = 100 # Maximale Anzahl der Outliers im generierten Datensatz.
+outliers = False # if True, then we generate some outliers to the train data
+#                  (for more details see below in the code).
+max_num_outliers = 100 # max. number of generated outliers.
 
 SGD_allowed = True # wenn True, dann wird SGD-Update performt!
 GN_allowed = True # wenn True, dann wird auch GN-Update nach dem SGD-Update performt!
-gradient_cal = 'alternativ' # kann als 'standard' oder 'alternativ' gesetzt werden!
-                          # wenn standard, dann wird der Gradient mit Rückwärts AD durch
-                          # die ges. Objektfunktion berechnet, mit alternativ wird
-                          # nur die Jacobi bezgl. der Netzwerkparameter berechnet und dann
-                          # mit den Residuen multipliziert.
-GN_cal = 'R_Op' # wenn True, dann wird die GN-Matrix vor dem CG-update komplett berechnet,
-              # ansonsten werden im CG-update Matrix-Vektor Produkte berechnet,
-              # ohne Verwendung der GN-Matrix!
-              # wenn nicht False oder True dann wird mit dem R-Operator im CG-Verfahren
-              # optimiert
-plotting = True # wenn True, dann werden die generierten Plots angezeigt!
+gradient_cal = 'standard' # can be set to 'standard' or anything else ...
+#                           'standard': whole gradient of the loss is calculated
+#                           else: we calculate just the Jac of the NN outputs
+#                           and multiply it with the residuals to obtain the
+#                           gradient of the loss.
+GN_cal = False # if set to TRUE we calculate the whole damped GGN before the
+#                CG-algorithm.
+#                Else, we use fast-matrix-vector-products without storing and
+#                computing the damped GGN at any time (more efficient).
+plotting = True # if TRUE, then plots will be displayed at the end of the
+#                 training.
 
 #########################################
 #Data generation (optional mit Outliern):
@@ -333,25 +348,21 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
     theta = model.trainable_variables
 
-    #grad_net = [tf.concat([tf.reshape(h, [model_neurons[-1], n_params[i]]) for i, h in enumerate(tape.gradient(y_gather[j], theta))], axis=1) for j in range(batch_size)]
-    #print(grad_net)
-    #print('stop')
-
     jac = tape.jacobian(y_pred, theta)
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
 
     if gradient_cal == 'standard':
-        # Gradient berechnet durch Jacobi_Vector_Produkt:
-        grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True),
-                                             axis=0))
-
-    else:
         # (optional) Gradient mit Tape berechnen (!! ist gleich schnell):
         grad_obj = tape.gradient(loss, theta)
         grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
                                          for i, g in enumerate(grad_obj)],
                                         axis=0))
+
+    else:
+        # Gradient berechnet durch Jacobi_Vector_Produkt:
+        grad_obj = tf.squeeze(tf.reduce_mean(tf.matmul(jac, res, transpose_a=True),
+                                             axis=0))
 
 
     if GN_cal == True:

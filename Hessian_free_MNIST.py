@@ -12,9 +12,9 @@ from keras.datasets import mnist
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
-################
+#################
 #hyperparameters:
-################
+#################
 # here one can set some parameters for the training, e.g. which
 # optimization method is used or what kind of Network architecture is used and
 # number of epochs, CG-steps, parameter seeds, ...
@@ -30,8 +30,10 @@ batch_size = 250 # for the 2nd order optimization method we recommend
 #                  a relatively large batchsize, e.g. >= 250 up to 1000.
 #                  In our Experiments we used 250 (and 300).
 epochs = 5
+learningrate_SGD = 0.01 # one can choose a learningrate for SGD optimization.
 CG_steps = 3 # we recommend 3 for MNIST, more steps (e.g. 10) result in longer
 #              computation time but also the loss will decrease marginally
+acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
 
 fmv_version = 3 # options are 1, 2, 3 (version 3 works best!)
 #                (for the different versions see below in the code)
@@ -292,7 +294,7 @@ def train_step_fast_generalized_gauss_newton(x, y, lam, update_old):
                           for i, g in enumerate(grad_obj)], axis=0))
 
     update = fast_preconditioned_cg_method(update_old, x, y, grad_obj,
-                                           CG_steps, 0.0005)
+                                           CG_steps, acc_CG)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
@@ -343,7 +345,7 @@ def train_step_generalized_gauss_newton_naive(x, y, lam, update_old):
 
     update = preconditioned_cg_method_naive(jac,
                                             jac_softmax, update_old, grad_obj,
-                                            CG_steps, 0.0005)
+                                            CG_steps, acc_CG)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
 
@@ -366,7 +368,7 @@ def train_step_generalized_gauss_newton_naive(x, y, lam, update_old):
     return lam, update
 
 
-# standard SGD optimization
+# standard SGD optimization:
 def train_step_gradient_descent(x, y, eta):
     with tf.GradientTape() as tape:
         y_pred = model(x)
@@ -418,7 +420,8 @@ for epoch in range(epochs):
         elif train_method == 'SGD':
             #standard SGD.
             t = time.time()
-            train_step_gradient_descent(x_train[start: end], y_train[start: end], 0.01)
+            train_step_gradient_descent(x_train[start: end], y_train[start: end],
+                                        learningrate_SGD)
             elapsed = time.time() - t
             print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, elapsed))
@@ -442,8 +445,3 @@ for epoch in range(epochs):
 
 #elapsed = time.time() - t
 print('test accuracy:', (10000 - wrong_classified) / 10000)
-
-########################
-#plots and informations:
-########################
-# TODO ...
