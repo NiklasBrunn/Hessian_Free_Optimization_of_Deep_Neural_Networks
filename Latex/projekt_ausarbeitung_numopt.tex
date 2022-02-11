@@ -67,33 +67,33 @@ In this section, we introduce the necessary mathematical notations for optimizin
 As one of the main components of Deep Learning, DNNs are function approximators that can approximate any continuous function arbitrarily well. Given a dataset of observation pairs $D =\{(x_{i}, y_{i})_{1\leq i\leq N}\}$ with input ${x}$ and corresponding target $y$, the optimization task is to find optimal parameters such that given an observation $x$, the DNN`s evaluation with current parameters is approximatively the coressponding observed target $y$.  Whenever we use the designation
 DNN we actually mean the realisation of a DNN given an input $x$, which is a mapping
 \begin{align}
-\mathrm{R}_{x}(\theta):\mathbb{R}^{d}\rightarrow\mathbb{R}^{m},
+R_{x}(\theta):\mathbb{R}^{d}\rightarrow\mathbb{R}^{m},
 \end{align}
 where $\theta$ is a vector containing the parameters of the DNN and $\Theta^{d}=\mathbb{R}^{d}$ denotes the parameter space with usually $d >> m$. We shortly write 
 \begin{align} 
-\hat{y}_{x} := \mathrm{R}_{x}(\theta)
+\hat{y}_{x} := R_{x}(\theta)
 \end{align}
-for the Output of a DNN given an input $x$ with current parameters $\theta$. In detail $\mathrm{R}_{x}$ is an alternating concatenation of a fixed number of affine and nonlinear mappings, where the parameter vector $\theta$ is the collection of every entry of all matrices and vectors in the affine mappings. The affine mappings are called Layers and the nonlinear mappings are called activation functions in the Machine Learning literature and are always applied element-wise to the output of the preceding Layers. %\\
+for the Output of a DNN given an input $x$ with current parameters $\theta$. In detail $R_{x}$ is an alternating concatenation of a fixed number of affine and nonlinear mappings, where the parameter vector $\theta$ is the collection of every entry of all matrices and vectors in the affine mappings. The affine mappings are called Layers and the nonlinear mappings are called activation functions in the Machine Learning literature and are always applied element-wise to the output of the preceding Layers. %\\
 %(For a more detailed introduction to DNNs, we provide additional material in the Appendix)\\
-Within this report, we also asume that there is no further activation function for DNNs after the last layer but allow that outside the DNN a further activation function $\text{akt}:\mathbb{R}\rightarrow\mathbb{R}$ can be placed after the output of the DNN. This allows us to use technical tricks that later favor the implementation.
-In that case we denote the Output of the afterwards element-wise application of an activationfunction to the output of a DNN with
+Within this report, we also asume that there is no further activation function for DNNs after the last layer but allow that outside the DNN a further activation function $\phi:\mathbb{R}\rightarrow\mathbb{R}$ can be placed after the output of the DNN. This allows us to use technical tricks that later favor the implementation.
+In that case we denote the Output of the afterwards element-wise application of an activationfunction to DNN`s output with
 \begin{align}
-z_{x} := \text{akt}(\hat{y}_{x}) = \text{akt}(\mathrm{R}_{x}(\theta)).
+z_{x} := \Phi(\hat{y}_{x}).
 \end{align}
 
 \subsection{Loss functions}
 For the optimization we need a good optimization criterion in the form of a scalar-valued loss function
 \begin{align}
-&\mathrm{L}:\mathbb{R}^{m}\rightarrow \mathbb{R}^{+};\\
-&(\hat{y}_{x}, y)\mapsto \mathrm{L}_{y}(z_{x}) := \mathrm{L}(z_{x}, y),
+&L:\mathbb{R}^{m}\times \mathbb{R}^{m}\rightarrow \mathbb{R}^{+};\\
+&(z, y)\mapsto L_{y}(z) := L(z, y),
 \end{align}
-which is asumed to be at least twice continuous-differentiable. The loss can be seen as a feedback signal, how well the DNN fits the observation data with its current parameters. Choosing a good loss function is one of the most important tasks in the optimization of DNNs. For example, in multi-classification tasks, the loss function used is the corssentropy loss function with previous softmax-activation function and for regression we typically use the squared error loss function with previous identity-activation function.
+which is asumed to be at least twice continuous-differentiable. The loss takes as input the Output of the activation function $\Phi$ and the target $y$ which corresponds to the observed value $x$ and can be seen as a feedback signal, how well the DNN fits the observation data with its current parameters. Choosing a good loss function is one of the most important tasks in the optimization of DNNs. For example, in multi-classification tasks, a frequently used loss function is the corssentropy loss function with previous softmax-activation function and for regression we typically use the squared error loss function with previous identity-activation function.
 
 \subsection{Network training formulated as a NLP}
 Parameter optimization of a DNN can be formulated as an unconstrained NLP. Therefore we define the OL as a mapping which calculates the empirical loss of the DNN`s output with current parameters $\theta$ given the input $x$ and the corresponding target $y$
 \begin{align}
 &f_{D}:\Theta^{d}\rightarrow\mathbb{R}^{+};\\
-\theta\mapsto f_{D}(\theta) &:= \mathbb{E}_{D}[\mathrm{L}_{y}(z_{x})] =  \frac{1}{N}\sum_{j = 1}^{N}\mathrm{L}_{y_{j}}(z_{x_{j}}).
+\theta\mapsto f_{D}(\theta) &:= \mathbb{E}_{D}[L_{y}(z_{x})] =  \frac{1}{N}\sum_{j = 1}^{N}L_{y_{j}}(z_{x_{j}}).
 \end{align}
 Thus we get the unconstrained NLP formulation
 \begin{align}
@@ -105,59 +105,60 @@ Further, if we consider only one observation $(x, y)$ from the observation data 
 \subsection{Matching loss functions}
 For later purposes we need to calculate the Jacobian or. the gradient of the OL with respect to the DNN`s parameters. For simplicity we consider the OL for only one pair of observations
 \begin{align}
-\frac{\partial}{\partial\theta}f_{x, y}(\theta) = \mathrm{J}_{f_{x, y}}.
+J_{f_{x, y}} := \frac{\partial}{\partial\theta}f_{x, y}(\theta).
 \end{align}
+and hide the dependency to the parameters $\theta$ to ensure readability.
 Note that due to the linearity of the derivative, the results can be extended without problems to the case where the whole data set or a batched version of the whole data set is considered.
 Applying the chain rule we can rewrite the Jacobian in (9) to
 \begin{align}
-\mathrm{J}_{f_{x, y}} &= \mathrm{J}_{\mathrm{L}_{y}\circ \:\text{akt} \:\circ\:\mathrm{R}_{x}} = \mathrm{J}_{\mathrm{L}_{y}} \: \mathrm{J}_{\text{akt}} \: \mathrm{J}_{\mathrm{R}_{x}},\\
-\mathrm{J}_{f_{x, y}}^{\mathrm{T}} &= \mathrm{J}_{\mathrm{R}_{x}}^{\mathrm{T}} \: \mathrm{J}_{\text{akt}}^{\mathrm{T}} \: \mathrm{J}_{\mathrm{L}_{y}}^{\mathrm{T}}.
+J_{f_{x, y}} &= J_{L_{y}\circ \:\Phi \:\circ\:R_{x}} = J_{L_{y}} \: J_{\Phi} \: J_{R_{x}},\\
+J_{f_{x, y}}^{\mathrm{T}} &= J_{R_{x}}^{\mathrm{T}} \: J_{\Phi}^{\mathrm{T}} \: J_{L_{y}}^{\mathrm{T}}.
 \end{align}
-As introduced in [8], we also make use of the so-called matching loss functions, where we say that a loss function $\mathrm{L}$ matches the output-non-linearity $\text{akt}$ if
+As introduced in [8], we also make use of the so-called matching loss functions, where we say that a loss function $L$ matches the output-non-linearity $\Phi$ if
 \begin{align}
-\frac{\partial}{\partial\hat{y}_{x}}\left(\mathrm{L}_{y}\circ \text{akt}\right)^{\mathrm{T}}(\hat{y}_{x})= \mathrm{J}_{\mathrm{L}_{y}\circ \:\text{akt}}^{\mathrm{T}} = A\: z_{x} + b,
+\frac{\partial}{\partial\hat{y}_{x}}\left(L_{y}\circ \Phi\right)^{\mathrm{T}}(\hat{y}_{x})= J_{L_{y}\circ \:\Phi}^{\mathrm{T}} = A\: z_{x} + b,
 \end{align}
 for a matrix $A$ and a vector $b$ which both do not depend on the parameters $\theta$.
 The concept of matching loss functions will helpe us later in the implementation of the method. We will also see that many of the well known loss functions used for DNN optimization match their output-nonlinearity, e.g. the squared error loss function and crossentropy loss function with previous softmax-activation function.
 
 
 \section{Hessian-Free optimization method}
-In this section we want to give the reader a compact presentation of the different components used in the presented method. We will briefly review Newton`s method and go over the advantages and disadvantages of the usage of the Hessian matrix, and then introduce the necessary theory for the efficient $2^{\text{nd}}$-order optimization method. For a more detailed introduction in Newton-type optimization we refer the reader to [2] (Chapter 7), and [4] for details about the problems with pathological curvature. 
+In this section we want to give the reader a compact presentation of the different components used in the presented method. We will briefly review Newton`s method and go over the advantages and disadvantages of the usage of the Hessian matrix, and then introduce the necessary theory for the efficient $2^{\text{nd}}$-order optimization method. For a more detailed introduction in Newton-type optimization we refer the reader to chapter 7 in [2], and [4] for details about the problems with pathological curvature. 
 
 \subsection{Newton's method}\label{AA}
 Newton`s method is an optimization method, where we update the decition variables of a NLP iteratively by
 \begin{align}
- \theta_{k+1} = \theta_{k} -\mathrm{H}_{f_{x, y}}^{-1}\:\mathrm{J}_{f_{x, y}}^{\mathrm{T}},
+ \theta_{k+1} = \theta_{k} -H_{f_{x, y}}(\theta_{k})^{-1}\:J_{f_{x, y}}^{\mathrm{T}},
 \end{align}
-where $\mathrm{H}_{f_{x, y}}$ denotes the always symmetric Hessian matrix of the OL with respect to the current DNN`s parameters $\theta$ in the $k+1$-th step. This approach is motivated by minimizing the local quadratic approximation
+where $H_{f_{x, y}}(\theta_{k})$ denotes the Hessian matrix of the OL with respect to the current DNN`s parameters $\theta_{k}$ in the $k+1$-th step. This approach is motivated by minimizing the local quadratic approximation
 \begin{align}
-q(\theta + \delta)_{x, y} &:= f_{x, y}(\theta) + \mathrm{J}_{f_{x, y}}^{\mathrm{T}}\:\delta + \frac{1}{2}\:\delta^{\mathrm{T}}\:\mathrm{H_{f_{x, y}}}\:\delta\\
+q(\theta + \delta)_{x, y} &:= f_{x, y}(\theta) + J_{f_{x, y}}^{\mathrm{T}}\:\delta + \frac{1}{2}\:\delta^{\mathrm{T}}\:H_{f_{x, y}}(\theta)\:\delta\\
 &\approx f_{x, y}(\theta + \delta)
 \end{align}
 with respect to $\delta$. 
-Respecting informations about the curvature of the OL, using the Hessian can in contrast to the usage of gradient descent lead to convergence in much lesser iterations because it rescales the gradient of the OL in every step by using information about the local curvature of the OL.
+Respecting informations about the curvature of the OL, using the Hessian can in contrast to the usage of gradient descent lead to convergence in much lesser iterations because it rescales the gradient of the OL in every step by using information about the local curvature of the OL. As for the Jacobian martix in (9) we will also hide the dependence on the given parameters $\theta$ in the Hessian matrix and Hessian approximations notation.
 
 \subsection{Problems with the Hessian}
-We implicitly asume in every step of the Newton`s methode that the Hessian matrix is invertible, which in our case is very rare in the task of optimizing DNN`s parameters and even if the Hessian is invertible, we cannot ensure converges to a local minimum, since the Hessian usually does not have to be positive semidefinite either. Apart from that, the Hessian matrix has $d^{2}$ entries consisting of second-order partial derivatives, which makes it incredibly expensive to calculate, asuming $d>>m$. For this reason, the direct application of Newton's method to our task is inappropriate and we must first make some modifications to ensure an efficient application of Newton`s method..
+We implicitly asume in every step (13) of the Newton`s methode that the Hessian matrix is invertible, which in our case is very rare in the task of optimizing DNN`s parameters and even if the Hessian is invertible, we cannot ensure converges to a local minimum, since the Hessian usually does not have to be positive semidefinite either. Apart from that, the Hessian matrix has $d^{2}$ entries consisting of second-order partial derivatives, which makes it incredibly expensive to calculate, asuming $d>>m$. For this reason, the direct application of Newton's method to our task is inappropriate and we must first make some modifications to ensure an efficient application of Newton`s method..
 
 \subsection{The Generalized Gauss Newton Matrix}
 As a first improvement, we no longer use the Hessian matrix itself, but the Generalized Gauss Newton matrix (GGN), which is an approximation of the Hessian matrix
 \begin{align}
-\mathrm{G}_{f_{x, y}} := \mathrm{J}_{\hat{y}_{x}}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\hat{y}_{x}},
+G_{f_{x, y}} := J_{\hat{y}_{x}}^{\mathrm{T}}\:H_{L_{y}\circ\:\Phi}\:J_{\hat{y}_{x}},
 \end{align}
-with $\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}$ denoting the Hessian of $\mathrm{L_{y}\circ\:\text{akt}}$ with respect to the DNN`s output $\hat{y}_{x}$ and $\mathrm{J}_{\hat{y}_{x}}$ denoting the Jacobian of the DNN`s output with respect to its parameters.
-This representation is motivated by the fact that in the representation of the complete Hessian matrix
+with $H_{L_{y}\circ\:\Phi}$ denoting the Hessian of $L_{y}\circ\:\Phi$ with respect to the DNN`s output $\hat{y}_{x}$ and $J_{\hat{y}_{x}}$ denoting the Jacobian of the DNN`s output with respect to its parameters.
+This representation is motivated by the fact that in the representation of the complete Hessian matrix of the OL
 \begin{align}
-\mathrm{H}_{f_{x, y}} = \mathrm{J}_{\hat{y}_{x}}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\hat{y}_{x}}\:\sum_{j = 1}^{m}\left(\left(\mathrm{J}_{\mathrm{L}_{y}\circ \:\text{akt}}^{\mathrm{T}}\right)_{j}\cdot\mathrm{H}_{(\hat{y}_{x})_{j}}\right),
+H_{f_{x, y}} = J_{\hat{y}_{x}}^{\mathrm{T}}\:H_{L_{y}\circ\:\Phi}\:J_{\hat{y}_{x}}\:\sum_{j = 1}^{m}\left(\left(J_{L_{y}\circ \:\Phi}^{\mathrm{T}}\right)_{j}\cdot H_{(\hat{y}_{x})_{j}}\right),
 \end{align}
-where $\mathrm{H}_{(\hat{y}_{x})_{j}}$ denotes the Hessian of the DNN`s  $j$-th output, the last sum-term vanishes if 
+where $H_{(\hat{y}_{x})_{j}}$ denotes the Hessian of the DNN`s  $j$-th output, the last sum-term vanishes if 
 \begin{align}
-\left(\mathrm{J}_{\mathrm{L}_{y}\circ \:\text{akt}}^{\mathrm{T}}\right)_{j}\approx 0\:\lor\:\mathrm{H}_{(\hat{y}_{x})_{j}} \approx 0.
+\left(J_{L_{y}\circ \:\Phi}^{\mathrm{T}}\right)_{j}\approx 0\:\lor\:H_{(\hat{y}_{x})_{j}} \approx 0.
 \end{align}
-which in the first case of (18) means that the DNN represents the targets well.  Moreover, by construction, the GGN is a symmetric matrix and is positive semidefinite if $\mathrm{L_{y}\circ\:\text{akt}}$ is convex since for every $v\in\mathbb{R}^{d}$ it holds that
+which in the first case of (18) means that the DNN represents the target well.  Moreover, by construction, the GGN is a symmetric matrix and is positive semidefinite if $\mathrm{L_{y}\circ\:\Phi}$ is convex since for every $v\in\mathbb{R}^{d}$ it holds that
 \begin{align}
-v^{\mathrm{T}}\:\mathrm{G}_{f_{x, y}}\:v &= v^{\mathrm{T}}\:\left( \mathrm{J}_{\hat{y}_{x}}^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\:\mathrm{J}_{\hat{y}_{x}}\right)\:v\\
-&= \left(\mathrm{J}_{\hat{y}_{x}\:v}\right)^{\mathrm{T}}\:\mathrm{H}_{\mathrm{L_{y}\circ\:\text{akt}}}\left(\mathrm{J}_{\hat{y}_{x}\:v}\right) \\
+v^{\mathrm{T}}\:G_{f_{x, y}}\:v &= v^{\mathrm{T}}\:\left( J_{\hat{y}_{x}}^{\mathrm{T}}\:H_{L_{y}\circ\:\Phi}\:J_{\hat{y}_{x}}\right)\:v\\
+&= \left(J_{\hat{y}_{x}}\:v\right)^{\mathrm{T}}H_{L_{y}\circ\:\Phi}\left(J_{\hat{y}_{x}}\:v\right) \\
 &\geq 0.
 \end{align}
 For more information about the GGN we recommend chapter 8 in [5] .
@@ -165,26 +166,26 @@ For more information about the GGN we recommend chapter 8 in [5] .
 \subsection{Levenberg-Marquardt algorithm }
 Even if we would use the GGN insted of the Hessian in (13), which results in much faster runtime in contrast to the usage of the Hessian and is much more memory efficient, we cannot ensure invertibility. Thus it it sometimes not possible to find a solution of the linear system
 \begin{align}
-\mathrm{G}_{f_{x, y}}\cdot(\theta_{k+1} - \theta_{k}) = -\mathrm{J}_{f_{x, y}}^{\mathrm{T}},
+G_{f_{x, y}}\cdot(\theta_{k+1} - \theta_{k}) = -J_{f_{x, y}}^{\mathrm{T}},
 \end{align}
 which is equivalent to the system stated in (13) using the GGN insted of the Hessian.
 For that reason we use a damped version of the GGN (DGGN) where we add an diagonal matrix with positive values on the diagonal, e.g.
 \begin{align}
-\mathrm{DG}_{f_{x, y}} := \mathrm{G}_{f_{x, y}} + \lambda\cdot\mathrm{I}^{d\times d},
+DG_{f_{x, y}} := G_{f_{x, y}} + \lambda\cdot I^{d\times d},
 \end{align}
-with $\mathrm{I}^{d\times d}$ denoting the $d\times d$ unit matrix and some $\lambda>0$.
+with $I^{d\times d}$ denoting the $d\times d$ unit matrix and some $\lambda>0$.
 The DGGN constructed in this way is then actually invertible and positiv definite. 
 To see this we consider the decomposition
 \begin{align}
-\mathrm{G}_{f_{x, y}} = \mathrm{U}\:\Lambda\:\mathrm{U}^{\mathrm{T}},
+G_{f_{x, y}} = U\:\Lambda\:U^{\mathrm{T}},
 \end{align}
-with an orthogonal Matrix $\mathrm{U}\in\mathbb{R}^{d\times d}$ and a diagonal Matrix $\Lambda\in\mathbb{R}^{d\times d}$ which on the diagonal entries contains the nonnegative eigenvalues of the GGN. This decomposition exists because the GGN is symmetric and positive semidefinite. Further it holds that
+with an orthogonal Matrix $U\in\mathbb{R}^{d\times d}$ and a diagonal Matrix $\Lambda\in\mathbb{R}^{d\times d}$ which on the diagonal entries contains the nonnegative eigenvalues of the GGN. This decomposition exists because the GGN is symmetric and positive semidefinite. Further it holds that
 \begin{align}
-\mathrm{DG}_{f_{x, y}} &= \mathrm{U}\:\Lambda\:\mathrm{U}^{\mathrm{T}} + \lambda\cdot\mathrm{I}^{d\times d}\\
-&= \mathrm{U}\:\Lambda\:\mathrm{U}^{\mathrm{T}} + \mathrm{U}\:\lambda\cdot\mathrm{I}^{d\times d}\:\mathrm{U}^{\mathrm{T}}\\
-&= \mathrm{U}\:\left(\Lambda + \lambda\cdot\mathrm{I}\right)\:\mathrm{U}^{\mathrm{T}}
+DG_{f_{x, y}} &= U\:\Lambda\:U^{\mathrm{T}} + \lambda\cdot I^{d\times d}\\
+&= U\:\Lambda\:U^{\mathrm{T}} + U\:\lambda\cdot I^{d\times d}\:U^{\mathrm{T}}\\
+&= U\:\left(\Lambda + \lambda\cdot I^{d\times d}\right)\:U^{\mathrm{T}}
 \end{align}
-where the Matrix $\left(\Lambda + \lambda\cdot\mathrm{I}\right)$ is a diagonal one with only positive entries on the diagonal. Therefore the determinant of the produkt of the matrices in the last term is positive and as a consequence we get that the DGGN is positive definite and invertible.
+where the Matrix $\left(\Lambda + \lambda\cdot I^{d\times d}\right)$ is a diagonal one with only positive entries on the diagonal. Therefore the determinant of the produkt of the matrices in the last term is positive and as a consequence we get that the DGGN is positive definite and invertible.
 Note that a choice of $\lambda>>0$ leads to a Newton step where we would nearly not move away from our current parameters, while a choice of $\lambda\approx 0$ leads to a full step using the GGN (see also in [2], chapter 6.7). In practice, we update the value $\lambda$ after each iteration step according to certain conditions which we will explain in more detail later.
 
 \subsection{Conjugate Gradient method}
@@ -199,7 +200,7 @@ within
 \subsection{Mini-batches}
 If we are facing a large observation data set with $N>>0$, it is common to split the data set into batches $\mathrm{M}\subset\mathrm{D}$ containing only a few random samples $M<<N$ of the entire data and apply the optimization method to each of the generated batches for each iteration. The partition of $\mathrm{D}$ into smaler batches is called a mini-batch szenario, where $M$ denotes the batchsize of the mini-batches. For each mini-batch $\mathrm{M}$ the DGGN in (23) becomes
 \begin{align}
-\mathrm{DG}_{f_{\mathrm{M}}} := \frac{1}{M}\sum_{(x, y)\in \mathrm{M}}^{}\mathrm{G}_{f_{x, y}} + \lambda\cdot\mathrm{I}^{d\times d}.
+DG_{f_{\mathrm{M}}} := \frac{1}{M}\sum_{(x, y)\in \mathrm{M}}^{}G_{f_{x, y}} + \lambda\cdot I^{d\times d}.
 \end{align}
 As mentioned in [3], the batch size should be relatively large to capture enough information about the curvature of the OL. 
 
@@ -265,7 +266,7 @@ TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
     \For{epoch in epochs}{
     	$k\gets 0$\\
 	    \For{$(x, y)$ in $\mathrm{D}$}{
-	        $\mathrm{J}_{f_{x, y}}^{\mathrm{T}}(\theta_{k})\:$(compute with BAD)\\
+	        $J_{f_{x, y}}^{\mathrm{T}}(\theta_{k})\:$(compute with BAD)\\
             \CG{$\Delta\theta_{k+1}$}
             $\theta_{k+1}\gets \theta_{k} + \Delta\theta_{k+1}$\\
             \LAM{$\lambda$}
@@ -286,7 +287,7 @@ TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
 	\For{$epoch$ in epochs}{
 		$k\gets 0$\\
 		\For{$\mathrm{M}$ in $\mathrm{D}_{batched}$}{
-		    $\mathrm{J}_{f_{\mathrm{M}}}^{\mathrm{T}}(\theta_{k})\:$(compute with BAD)\\
+		    $J_{f_{\mathrm{M}}}^{\mathrm{T}}(\theta_{k})\:$(compute with BAD)\\
 			\CG{$\Delta\theta_{k+1}$}
 			$\theta_{k+1}\gets \theta_{k} + \Delta\theta_{k+1}$\\
 			\LAM{$\lambda$}    
@@ -305,10 +306,10 @@ TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
 	\SetKwInOut{FMV}{\textbf{fast-mat-vec-out($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
 	\caption{Condition for $\lambda$-updates}\label{alg:three}
 	\Input{$\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$}
-	\FMV{$\mathrm{DG}_{f_{\mathrm{M}}}\:\Delta\theta_{k+1}$}
-	$A\gets\mathrm{DG}_{f_{\mathrm{M}}}\:\Delta\theta_{k+1}$\\
+	\FMV{$DG_{f_{\mathrm{M}}}\:\Delta\theta_{k+1}$}
+	$A\gets DG_{f_{\mathrm{M}}}\:\Delta\theta_{k+1}$\\
 		\text{}\\
-	$\rho\gets \frac{f_{\mathrm{M}}(\theta_{k}+\Delta\theta_{k+1})\:-\: f_{\mathrm{M}}(\theta_{k})}{\mathrm{J}_{f_{\mathrm{M}}}^{\mathrm{T}}\cdot\Delta\theta_{k+1} + \frac{1}{2}\Delta\theta_{k+1}^{\mathrm{T}}\cdot A}$\\
+	$\rho\gets \frac{f_{\mathrm{M}}(\theta_{k}+\Delta\theta_{k+1})\:-\: f_{\mathrm{M}}(\theta_{k})}{J_{f_{\mathrm{M}}}^{\mathrm{T}}\cdot\Delta\theta_{k+1} + \frac{1}{2}\Delta\theta_{k+1}^{\mathrm{T}}\cdot A}$\\
 	\text{}\\
 	\If{$\rho<\frac{1}{4}$}{$\lambda\gets \frac{3}{2}\:\lambda$}
 	\ElseIf{$\rho>\frac{3}{4}$}{$\lambda\gets \frac{2}{3}\:\lambda$}
@@ -322,9 +323,9 @@ TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
 	\SetKwInOut{LAM}{\textbf{$\lambda$-update($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
 	\caption{Fast matrix-vector produkts (DGGN multiplied with an arbitrary vector $v$)}\label{alg:four}
 	\Input{$\mathrm{M}$, $v$, $\lambda$}
-	$\mathrm{G}_{f_{\mathrm{M}}}\:v$ (compute with FAD and BAD)\\
-	$\mathrm{DG}_{f_{\mathrm{M}}}\: v \gets \mathrm{G}_{f_{\mathrm{M}}}\: v + \lambda\cdot\mathrm{I}^{d\times d}\:v$\\
-	\Output{$\mathrm{DG}_{f_{\mathrm{M}}}\: v$}
+	$G_{f_{\mathrm{M}}}\:v$ (compute with FAD and BAD)\\
+	$DG_{f_{\mathrm{M}}}\: v \gets G_{f_{\mathrm{M}}}\: v + \lambda\cdot I^{d\times d}\:v$\\
+	\Output{$DG_{f_{\mathrm{M}}}\: v$}
 \end{algorithm}
 
 \begin{algorithm}
