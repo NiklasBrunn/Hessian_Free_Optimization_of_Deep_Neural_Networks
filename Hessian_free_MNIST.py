@@ -26,7 +26,7 @@ tf.get_logger().setLevel(logging.ERROR)
 
 Model_Seed = 1 # seed for the random initialisation of the model parameters.
 data_size = 60000
-batch_size = 250 # for the 2nd order optimization method we recommend
+batch_size = 100 # for the 2nd order optimization method we recommend
 #                  a relatively large batchsize, e.g. >= 250 up to 1000.
 #                  In our Experiments we used 250 (and 300).
 epochs = 5
@@ -35,7 +35,7 @@ CG_steps = 3 # we recommend 3 for MNIST, more steps (e.g. 10) result in longer
 #              computation time but also the loss will decrease marginally
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
 
-fmv_version = 3 # options are 1, 2, 3 (version 3 works best!)
+fmv_version = 2 # options are 1, 2, 3 (version 2 and 3 work best!)
 #                (for the different versions see below in the code)
 train_method = 'fast_CG' # options are: 'SGD', 'CG_naiv', 'fast_CG'
 # -> with CG_naive we mean that we use an inefficient way to compute the
@@ -44,7 +44,7 @@ train_method = 'fast_CG' # options are: 'SGD', 'CG_naiv', 'fast_CG'
 #    from right to left.
 # -> with fast_CG
 Net = 'Dense' # options are 'Dense', 'CNN' (we used Dense for our experiments).
-model_neurons = [784, 800, 10] # number of neurons when choosing Dense
+model_neurons = [784, 500, 10] # number of neurons when choosing Dense
 
 
 ####################
@@ -190,7 +190,7 @@ def fastmatvec_V2(x_batch, y_batch, v, lam):
 # Version 3; computation from right to left: (J_Softmax(Net))' * J_Net * v
 # u := J_Net * v with FAD
 # (J_Softmax(Net))' * u with BAD
-# (works best!)
+# (fast!)
 def fastmatvec_V3(x_batch, y_batch, v, lam):
     v_new = [v[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
     v_new = [tf.Variable(tf.reshape(u, s)) for (u, s) in zip(v_new, param_shape)]

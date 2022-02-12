@@ -29,10 +29,10 @@ Model_Seed = 1 # Seed for the initialisation of the NN parameters
 train_size = 1500 # number of observations for training.
 test_size = 500 # number of observations for testing.
 batch_size = 100
-epochs = 10
+epochs = 250
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
-learningrate_SGD = 0.3
+learningrate_SGD = 0.1
 model_neurons = [1, 15, 15, 1] # NN architecture (Layer dimensions).
 
 SGD_allowed = True # NN training with SGD only if SGD_allowed = True.
@@ -403,7 +403,7 @@ ax3.plot(time_vec_SGD, train_loss_vec_SGD, 'r',label='SGD', linewidth=0.8)
 ax3.set_xlabel('Time (in seconds)')
 ax3.set_ylabel('Train-Loss')
 ax3.set_title('Train-Loss per Time:')
-ax3.set_ylim(-0.005, 0.1)
+ax3.set_ylim(-0.005, 0.05)
 
 if GN_allowed == True:
     ax3.plot(time_vec_GN, train_loss_vec_GN, 'b', label='Hessian_free', linewidth=0.8)
@@ -415,7 +415,7 @@ ax4.plot(time_vec_SGD, test_loss_vec_SGD, 'r', label='SGD', linewidth=0.8)
 ax4.set_xlabel('Time (in seconds)')
 ax4.set_ylabel('Test-Loss')
 ax4.set_title('Test-Loss per Time:')
-ax4.set_ylim(-0.005, 0.1)
+ax4.set_ylim(-0.005, 0.05)
 
 if GN_allowed == True:
     ax4.plot(time_vec_GN, test_loss_vec_GN, 'b', label='Hessian_free', linewidth=0.8)
