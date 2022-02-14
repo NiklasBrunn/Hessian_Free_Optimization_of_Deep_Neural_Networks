@@ -29,8 +29,8 @@ data_size = 60000
 batch_size = 1000 # for the 2nd order optimization method we recommend
 #                  a relatively large batchsize, e.g. >= 250 up to 1000.
 #                  In our Experiments we used 250 (and 300).
-epochs = 5
-learningrate_SGD = 0.01 # one can choose a learningrate for SGD optimization.
+epochs = 250
+learningrate_SGD = 0.1 # one can choose a learningrate for SGD optimization.
 CG_steps = 3 # we recommend 3 for MNIST, more steps (e.g. 10) result in longer
 #              computation time but also the loss will decrease marginally
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
@@ -212,7 +212,7 @@ def fastmatvec_V3(x_batch, y_batch, v, lam):
 #CG-Algorithm functions:
 ########################
 # preconditioned_cg_method for every other fastmatvec function using FAD and BAD.
-def fast_preconditioned_cg_method(v, x_batch, y_batch, b, min_steps, precision):
+def fast_preconditioned_cg_method(v, x_batch, y_batch, b, min_steps, eps):
     if fmv_version == 1:
         r = b - fastmatvec_V1(x_batch, y_batch, v, lam)
     elif fmv_version == 2:
@@ -220,12 +220,13 @@ def fast_preconditioned_cg_method(v, x_batch, y_batch, b, min_steps, precision):
     else:
         r = b - fastmatvec_V3(x_batch, y_batch, v, lam)
 
-    y = r / (b ** 2 + lam)
+    M = (b**2 + lam) ** 0.75
+    y = r/M
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.math.reduce_sum(v*b) +
-                                    tf.math.reduce_sum(v*r))).reshape([1])
-    while i <= k or s >= precision*k or phi_history[-1] >= 0:
+    phi_history = np.array(- 0.5 * tf.math.reduce_sum(v*(b+r)))
+    r_dot_y = tf.math.reduce_sum(r * y)
+    while i <= k or s >= eps*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         if fmv_version == 1:
             z = fastmatvec_V1(x_batch, y_batch, d, lam)
@@ -234,18 +235,18 @@ def fast_preconditioned_cg_method(v, x_batch, y_batch, b, min_steps, precision):
         else:
             z = fastmatvec_V3(x_batch, y_batch, d, lam)
 
-        alpha = tf.math.reduce_sum(r*y) / tf.math.reduce_sum(d*z)
-        v = v + alpha * d
-        r_new = r - alpha * z
-        y_new = r_new / (b ** 2 + lam)
-        beta = tf.math.reduce_sum(r_new*y_new) / tf.math.reduce_sum(r*y)
-        d = y_new + beta * d
-        r = r_new
-        y = y_new
+        alpha = r_dot_y / tf.math.reduce_sum(d*z)
+        z *= alpha
+        v += alpha * d
+        r -= z
+        y -= z / M
+        r_dot_y_new = tf.math.reduce_sum(r*y)
+        d = y + d * r_dot_y_new / r_dot_y
+        r_dot_y = r_dot_y_new
         phi_history = np.append(phi_history, np.array(
-            - 0.5 * (tf.math.reduce_sum(v*b) + tf.math.reduce_sum(v*r))))
+            - 0.5 * (tf.math.reduce_sum(v*(b+r)))))
         if i >= k:
-            s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
+            s = 1 - phi_history[-k] / phi_history[-1]
         else:
             s = k
         i += 1
@@ -253,28 +254,29 @@ def fast_preconditioned_cg_method(v, x_batch, y_batch, b, min_steps, precision):
 
 
 # preconditioned_cg_method for fastmatvec_naive:
-def preconditioned_cg_method_naive(A, B, x, b, min_steps, precision):
+def preconditioned_cg_method_naive(A, B, x, b, min_steps, eps):
     r = b - fastmatvec_naive(x, A, B, lam)
-    y = r / (b ** 2 + lam)
+    M = (b**2 + lam) ** 0.75
+    y = r/M
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.math.reduce_sum(x*b) +
-                           tf.math.reduce_sum(x*r))).reshape([1])
-    while i <= k or s >= precision*k or phi_history[-1] >= 0:
+    phi_history = np.array(- 0.5 * tf.math.reduce_sum(x*(b+r)))
+    r_dot_y = tf.math.reduce_sum(r * y)
+    while i <= k or s >= eps*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = fastmatvec_naive(d, A, B, lam)
-        alpha = tf.math.reduce_sum(r*y) / tf.math.reduce_sum(d*z)
-        x = x + alpha * d
-        r_new = r - alpha * z
-        y_new = r_new / (b ** 2 + lam)
-        beta = tf.math.reduce_sum(r_new*y_new) / tf.math.reduce_sum(r*y)
-        d = y_new + beta * d
-        r = r_new
-        y = y_new
+        alpha = r_dot_y / tf.math.reduce_sum(d*z)
+        z *= alpha
+        v += alpha * d
+        r -= z
+        y -= z / M
+        r_dot_y_new = tf.math.reduce_sum(r*y)
+        d = y + d * r_dot_y_new / r_dot_y
+        r_dot_y = r_dot_y_new
         phi_history = np.append(phi_history, np.array(
-            - 0.5 * (tf.math.reduce_sum(x*b) + tf.math.reduce_sum(x*r))))
+            - 0.5 * (tf.math.reduce_sum(x*(b+r)))))
         if i >= k:
-            s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
+            s = 1 - phi_history[-k] / phi_history[-1]
         else:
             s = k
         i += 1
@@ -306,19 +308,19 @@ def train_step_fast_generalized_gauss_newton(x, y, lam, update_old):
     impr = loss - model_loss(y,  model(x))
 
     if fmv_version == 1:
-        rho = impr / (tf.math.reduce_sum(grad_obj*update) +
-                      tf.math.reduce_sum(update*fastmatvec_V1(x, y, update, 0)))
+        rho = impr / tf.math.reduce_sum((grad_obj +
+                                         fastmatvec_V1(x, y, update, 0)) * update)
     elif fmv_version == 2:
-        rho = impr / (tf.math.reduce_sum(grad_obj*update) +
-                      tf.math.reduce_sum(update*fastmatvec_V2(x, y, update, 0)))
+        rho = impr / tf.math.reduce_sum((grad_obj +
+                                         fastmatvec_V2(x, y, update, 0)) * update)
     else:
-        rho = impr / (tf.math.reduce_sum(grad_obj*update) +
-                      tf.math.reduce_sum(update*fastmatvec_V3(x, y, update, 0)))
+        rho = impr / tf.math.reduce_sum((grad_obj +
+                                         fastmatvec_V3(x, y, update, 0)) * update)
 
     if rho > 0.75:
-        lam /= 1.5
+        lam /= 1.01
     elif rho < 0.25:
-        lam *= 1.5
+        lam *= 1.01
 
     return lam, update
 
@@ -332,13 +334,11 @@ def train_step_generalized_gauss_newton_naive(x, y, lam, update_old):
         loss = model_loss(y, y_pred)
 
     theta = model.trainable_variables
-
     jac_softmax = tape.batch_jacobian(akt_out, y_pred)
 
     jac = tape.jacobian(y_pred, theta)
     jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
                      for i, h in enumerate(jac)], axis=2)
-
     grad_obj = tape.gradient(loss, theta)
     grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
                           for i, g in enumerate(grad_obj)], axis=0))
@@ -356,14 +356,13 @@ def train_step_generalized_gauss_newton_naive(x, y, lam, update_old):
 
     impr = loss - model_loss(y,  model(x))
 
-    rho = impr / (tf.math.reduce_sum(grad_obj*update, 1) +
-                  tf.math.reduce_sum(update*fastmatvec_naive(update,
-                                                        jac, jac_softmax, 0)))
+    rho = impr / tf.math.reduce_sum((grad_obj +
+                                     fastmatvec_naive(x, y, update, 0)) * update)
 
     if rho > 0.75:
-        lam /= 1.5
+        lam /= 1.01
     elif rho < 0.25:
-        lam *= 1.5
+        lam *= 1.01
 
     return lam, update
 
@@ -391,6 +390,9 @@ num_updates = int(data_size / batch_size)
 #t = time.time()
 error_old = 100000
 for epoch in range(epochs):
+    perm = np.random.permutation(data_size)
+    x_train = np.take(x_train, perm, axis = 0)
+    y_train = np.take(y_train, perm, axis = 0)
     train_loss = np.array(model_loss(y_train, model.predict(x_train)))
     print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, train_loss))

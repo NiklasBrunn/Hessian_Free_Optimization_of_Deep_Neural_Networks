@@ -28,14 +28,15 @@ Model_Seed = 1 # Seed for the initialisation of the NN parameters
 
 train_size = 1500 # number of observations for training.
 test_size = 500 # number of observations for testing.
-batch_size = 300
+batch_size_SGD = 100
+batch_size_GN = 300
 epochs = 25
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
 learningrate_SGD = 0.1
 model_neurons = [1, 15, 15, 1] # NN architecture (Layer dimensions).
 
-SGD_allowed = False # NN training with SGD only if SGD_allowed = True.
+SGD_allowed = True # NN training with SGD only if SGD_allowed = True.
 GN_allowed = True # NN training with the Hessian-Free method only if
 #                   GN_allowed = True.
 
@@ -113,40 +114,40 @@ def fastmatvec(x_batch, y_batch, v, lam):
     v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
                                   for i, v in enumerate(backward)], axis=0))
 
-    return v_new/batch_size + lam * v
-    #return v_new/batch_size + tf.math.scalar_mul(lam, v)
+    return v_new/batch_size_GN + lam * v
 
 
 #######################
 #CG-Algorithm function:
 #######################
-def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, precision):
-    r = b - fastmatvec(x_batch, y_batch, v, lam) # (A+lam*I) * x
-    y = r / (b ** 2 + lam)
+def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, eps):
+    r = b - fastmatvec(x_batch, y_batch, v, lam)
+    M = (b**2 + lam) ** 0.75
+    y = r/M
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.math.reduce_sum(v*b) +
-                                    tf.math.reduce_sum(v*r))).reshape([1])
-    while i <= k or s >= precision*k or phi_history[-1] >= 0:
+    phi_history = np.array(- 0.5 * tf.math.reduce_sum(v*(b+r)))
+    r_dot_y = tf.math.reduce_sum(r * y)
+    while i <= k or s >= eps*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = fastmatvec(x_batch, y_batch, d, lam)
-        alpha = tf.math.reduce_sum(r*y) / tf.math.reduce_sum(d*z)
-        v = v + alpha * d
-        r_new = r - alpha * z
-        y_new = r_new / (b ** 2 + lam)
-        beta = tf.math.reduce_sum(r_new*y_new) / tf.math.reduce_sum(r*y)
-        d = y_new + beta * d
-        r = r_new
-        y = y_new
+        alpha = r_dot_y / tf.math.reduce_sum(d*z)
+        z *= alpha
+        v += alpha * d
+        r -= z
+        y -= z / M
+        r_dot_y_new = tf.math.reduce_sum(r*y)
+        d = y + d * r_dot_y_new / r_dot_y
+        r_dot_y = r_dot_y_new
         phi_history = np.append(phi_history, np.array(
-            - 0.5 * (tf.math.reduce_sum(v*b) + tf.math.reduce_sum(v*r))))
+            - 0.5 * (tf.math.reduce_sum(v*(b+r)))))
         if i >= k:
-            s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
+            s = 1 - phi_history[-k] / phi_history[-1]
         else:
             s = k
         i += 1
-
     return v
+
 
 ##############
 #optimization:
@@ -176,8 +177,8 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
     impr = loss - model_loss(y,  model(x))
 
-    rho = impr / (tf.math.reduce_sum(grad_obj*update) +
-                  tf.math.reduce_sum(update*fastmatvec(x, y, update, 0)))
+    rho = impr / tf.math.reduce_sum((grad_obj +
+                                     fastmatvec(x, y, update, 0)) * update)
 
     if rho > 0.75:
         lam /= 1.5
@@ -204,7 +205,6 @@ def train_step_gradient_descent(x, y, eta):
 ##########
 #training:
 ##########
-num_updates = int(train_size / batch_size)
 
 # generating plots:
 f, ((ax0, ax1, ax3, ax5), (ax7, ax2, ax4, ax6)) = plt.subplots(2, 4,
@@ -215,6 +215,8 @@ ax0.plot(a, a**2, label='Ground Truth', c='green')
 
 
 #SGD-training:
+num_updates = int(train_size / batch_size_SGD)
+
 test_loss_vec_SGD = np.zeros(epochs)
 train_loss_vec_SGD = np.zeros(epochs)
 epoch_vec_SGD = [i for i in range(epochs)]
@@ -227,6 +229,9 @@ time_vec_SGD = np.zeros(epochs)
 
 if SGD_allowed == True:
     for epoch in range(epochs):
+        perm = np.random.permutation(train_size)
+        x_train = np.take(x_train, perm, axis = 0)
+        y_train = np.take(y_train, perm, axis = 0)
         train_loss = model_loss(y_train, model.predict(x_train))
         print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
                                                                    1).zfill(len(str(epochs))),
@@ -245,8 +250,8 @@ if SGD_allowed == True:
             #error_new_train_SGD = model_loss(y_train, model.predict(x_train))
             #error_new_test_SGD = model_loss(y_test, model.predict(x_test))
 
-            start = i * batch_size
-            end = start + batch_size
+            start = i * batch_size_SGD
+            end = start + batch_size_SGD
 
             s = time.time()
             train_step_gradient_descent(x_train[start: end], y_train[start: end], learningrate_SGD)
@@ -310,7 +315,11 @@ time_vec_GN = np.zeros(epochs)
 #epochs_GN = np.zeros(epochs*num_updates)
 
 if GN_allowed == True:
+    num_updates = int(train_size / batch_size_GN)
     for epoch in range(epochs):
+        perm = np.random.permutation(train_size)
+        x_train = np.take(x_train, perm, axis = 0)
+        y_train = np.take(y_train, perm, axis = 0)
         train_loss = model_loss(y_train, model.predict(x_train))
         print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
                                                                    1).zfill(len(str(epochs))),
@@ -329,8 +338,8 @@ if GN_allowed == True:
             #error_new_train_GN = model_loss(y_train, model.predict(x_train))
             #error_new_test_GN = model_loss(y_test, model.predict(x_test))
 
-            start = i * batch_size
-            end = start + batch_size
+            start = i * batch_size_GN
+            end = start + batch_size_GN
 
             s = time.time()
             lam, update_old = train_step_generalized_gauss_newton(
