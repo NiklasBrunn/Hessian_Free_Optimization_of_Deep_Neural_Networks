@@ -26,7 +26,7 @@ tf.get_logger().setLevel(logging.ERROR)
 
 Model_Seed = 1 # seed for the random initialisation of the model parameters.
 data_size = 60000
-batch_size = 100 # for the 2nd order optimization method we recommend
+batch_size = 1000 # for the 2nd order optimization method we recommend
 #                  a relatively large batchsize, e.g. >= 250 up to 1000.
 #                  In our Experiments we used 250 (and 300).
 epochs = 5
@@ -223,8 +223,8 @@ def fast_preconditioned_cg_method(v, x_batch, y_batch, b, min_steps, precision):
     y = r / (b ** 2 + lam)
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) +
-                                    tf.tensordot(v, r, 1))).reshape([1])
+    phi_history = np.array(- 0.5 * (tf.math.reduce_sum(v*b) +
+                                    tf.math.reduce_sum(v*r))).reshape([1])
     while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         if fmv_version == 1:
@@ -234,16 +234,16 @@ def fast_preconditioned_cg_method(v, x_batch, y_batch, b, min_steps, precision):
         else:
             z = fastmatvec_V3(x_batch, y_batch, d, lam)
 
-        alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
+        alpha = tf.math.reduce_sum(r*y) / tf.math.reduce_sum(d*z)
         v = v + alpha * d
         r_new = r - alpha * z
         y_new = r_new / (b ** 2 + lam)
-        beta = tf.tensordot(r_new, y_new, 1) / tf.tensordot(r, y, 1)
+        beta = tf.math.reduce_sum(r_new*y_new) / tf.math.reduce_sum(r*y)
         d = y_new + beta * d
         r = r_new
         y = y_new
         phi_history = np.append(phi_history, np.array(
-            - 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))))
+            - 0.5 * (tf.math.reduce_sum(v*b) + tf.math.reduce_sum(v*r))))
         if i >= k:
             s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
         else:
@@ -258,21 +258,21 @@ def preconditioned_cg_method_naive(A, B, x, b, min_steps, precision):
     y = r / (b ** 2 + lam)
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(x, b, 1) +
-                           tf.tensordot(x, r, 1))).reshape([1])
+    phi_history = np.array(- 0.5 * (tf.math.reduce_sum(x*b) +
+                           tf.math.reduce_sum(x*r))).reshape([1])
     while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = fastmatvec_naive(d, A, B, lam)
-        alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
+        alpha = tf.math.reduce_sum(r*y) / tf.math.reduce_sum(d*z)
         x = x + alpha * d
         r_new = r - alpha * z
         y_new = r_new / (b ** 2 + lam)
-        beta = tf.tensordot(r_new, y_new, 1) / tf.tensordot(r, y, 1)
+        beta = tf.math.reduce_sum(r_new*y_new) / tf.math.reduce_sum(r*y)
         d = y_new + beta * d
         r = r_new
         y = y_new
         phi_history = np.append(phi_history, np.array(
-            - 0.5 * (tf.tensordot(x, b, 1) + tf.tensordot(x, r, 1))))
+            - 0.5 * (tf.math.reduce_sum(x*b) + tf.math.reduce_sum(x*r))))
         if i >= k:
             s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
         else:
@@ -306,14 +306,14 @@ def train_step_fast_generalized_gauss_newton(x, y, lam, update_old):
     impr = loss - model_loss(y,  model(x))
 
     if fmv_version == 1:
-        rho = impr / (tf.tensordot(grad_obj, update, 1) +
-                      tf.tensordot(update, fastmatvec_V1(x, y, update, 0), 1))
+        rho = impr / (tf.math.reduce_sum(grad_obj*update) +
+                      tf.math.reduce_sum(update*fastmatvec_V1(x, y, update, 0)))
     elif fmv_version == 2:
-        rho = impr / (tf.tensordot(grad_obj, update, 1) +
-                      tf.tensordot(update, fastmatvec_V2(x, y, update, 0), 1))
+        rho = impr / (tf.math.reduce_sum(grad_obj*update) +
+                      tf.math.reduce_sum(update*fastmatvec_V2(x, y, update, 0)))
     else:
-        rho = impr / (tf.tensordot(grad_obj, update, 1) +
-                      tf.tensordot(update, fastmatvec_V3(x, y, update, 0), 1))
+        rho = impr / (tf.math.reduce_sum(grad_obj*update) +
+                      tf.math.reduce_sum(update*fastmatvec_V3(x, y, update, 0)))
 
     if rho > 0.75:
         lam /= 1.5
@@ -356,9 +356,9 @@ def train_step_generalized_gauss_newton_naive(x, y, lam, update_old):
 
     impr = loss - model_loss(y,  model(x))
 
-    rho = impr / (tf.tensordot(grad_obj, update, 1) +
-                  tf.tensordot(update, fastmatvec_naive(update,
-                                                        jac, jac_softmax, 0), 1))
+    rho = impr / (tf.math.reduce_sum(grad_obj*update, 1) +
+                  tf.math.reduce_sum(update*fastmatvec_naive(update,
+                                                        jac, jac_softmax, 0)))
 
     if rho > 0.75:
         lam /= 1.5
