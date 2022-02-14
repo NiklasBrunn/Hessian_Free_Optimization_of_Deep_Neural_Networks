@@ -28,14 +28,14 @@ Model_Seed = 1 # Seed for the initialisation of the NN parameters
 
 train_size = 1500 # number of observations for training.
 test_size = 500 # number of observations for testing.
-batch_size = 100
-epochs = 250
+batch_size = 300
+epochs = 25
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
 learningrate_SGD = 0.1
 model_neurons = [1, 15, 15, 1] # NN architecture (Layer dimensions).
 
-SGD_allowed = True # NN training with SGD only if SGD_allowed = True.
+SGD_allowed = False # NN training with SGD only if SGD_allowed = True.
 GN_allowed = True # NN training with the Hessian-Free method only if
 #                   GN_allowed = True.
 
@@ -112,7 +112,9 @@ def fastmatvec(x_batch, y_batch, v, lam):
 
     v_new = tf.squeeze(tf.concat([tf.reshape(v, [n_params[i], 1])
                                   for i, v in enumerate(backward)], axis=0))
+
     return v_new/batch_size + lam * v
+    #return v_new/batch_size + tf.math.scalar_mul(lam, v)
 
 
 #######################
@@ -123,21 +125,21 @@ def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, precision):
     y = r / (b ** 2 + lam)
     d = y
     i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * (tf.tensordot(v, b, 1) +
-                                    tf.tensordot(v, r, 1))).reshape([1])
+    phi_history = np.array(- 0.5 * (tf.math.reduce_sum(v*b) +
+                                    tf.math.reduce_sum(v*r))).reshape([1])
     while i <= k or s >= precision*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
         z = fastmatvec(x_batch, y_batch, d, lam)
-        alpha = tf.tensordot(r, y, 1) / tf.tensordot(d, z, 1)
+        alpha = tf.math.reduce_sum(r*y) / tf.math.reduce_sum(d*z)
         v = v + alpha * d
         r_new = r - alpha * z
         y_new = r_new / (b ** 2 + lam)
-        beta = tf.tensordot(r_new, y_new, 1) / tf.tensordot(r, y, 1)
+        beta = tf.math.reduce_sum(r_new*y_new) / tf.math.reduce_sum(r*y)
         d = y_new + beta * d
         r = r_new
         y = y_new
         phi_history = np.append(phi_history, np.array(
-            - 0.5 * (tf.tensordot(v, b, 1) + tf.tensordot(v, r, 1))))
+            - 0.5 * (tf.math.reduce_sum(v*b) + tf.math.reduce_sum(v*r))))
         if i >= k:
             s = (phi_history[-1] - phi_history[-k]) / phi_history[-1]
         else:
@@ -145,7 +147,6 @@ def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, precision):
         i += 1
 
     return v
-
 
 ##############
 #optimization:
@@ -175,8 +176,8 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
     impr = loss - model_loss(y,  model(x))
 
-    rho = impr / (tf.tensordot(grad_obj, update, 1) +
-                  tf.tensordot(update, fastmatvec(x, y, update, 0), 1))
+    rho = impr / (tf.math.reduce_sum(grad_obj*update) +
+                  tf.math.reduce_sum(update*fastmatvec(x, y, update, 0)))
 
     if rho > 0.75:
         lam /= 1.5
