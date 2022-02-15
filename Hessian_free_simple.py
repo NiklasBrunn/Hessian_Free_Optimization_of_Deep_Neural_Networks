@@ -341,10 +341,10 @@ if GN_allowed == True:
             start = i * batch_size_GN
             end = start + batch_size_GN
 
-            s = time.time()
+            #s = time.time()
             lam, update_old = train_step_generalized_gauss_newton(
                 x_train[start: end], y_train[start: end], lam, update_old)
-            elapseds = time.time() - s
+            #elapseds = time.time() - s
             #print('estimated time for the batch-update step:', elapseds, 'sec')
 
             #train_time_GN[epoch*num_updates+i] = elapseds

@@ -389,7 +389,17 @@ num_updates = int(data_size / batch_size)
 ##########
 #t = time.time()
 error_old = 100000
-for epoch in range(epochs):
+traintime = 0  #while-loop over time
+epoch = 0  #while-loop over time
+#for epoch in range(epochs):  #for-loop over epochs
+while traintime <= 1500:   #while-loop over time
+    epoch += 1  #while-loop over time
+
+    train_time = np.zeros(epochs*num_updates)  #while-loop over time
+    error_history_test = np.zeros(epochs*num_updates)  #while-loop over time
+    error_history_train = np.zeros(epochs*num_updates)  #while-loop over time
+    epochs_vec = np.zeros(epochs*num_updates)  #while-loop over time
+
     perm = np.random.permutation(data_size)
     x_train = np.take(x_train, perm, axis = 0)
     y_train = np.take(y_train, perm, axis = 0)
@@ -397,6 +407,9 @@ for epoch in range(epochs):
     print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, train_loss))
     for i in range(num_updates):
+        error_new_train = model_loss(y_train, model.predict(x_train))  #while-loop over time
+        error_new_test = model_loss(y_test, model.predict(x_test))  #while-loop over time
+
         error_new = np.array(model_loss(y_test, model.predict(x_test)))
         if error_new < error_old:
             print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
@@ -412,6 +425,7 @@ for epoch in range(epochs):
             lam, update_old = train_step_generalized_gauss_newton_naive(
                 x_train[start: end], y_train[start: end], lam, update_old)
             elapsed = time.time() - t
+
             print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
                                                               1).zfill(len(str(epochs))), epochs, elapsed))
             wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) -
@@ -425,6 +439,7 @@ for epoch in range(epochs):
             train_step_gradient_descent(x_train[start: end], y_train[start: end],
                                         learningrate_SGD)
             elapsed = time.time() - t
+
             print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, elapsed))
             wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) -
@@ -437,6 +452,7 @@ for epoch in range(epochs):
             lam, update_old = train_step_fast_generalized_gauss_newton(
                 x_train[start: end], y_train[start: end], lam, update_old)
             elapsed = time.time() - t
+
             print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, elapsed))
             wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) -
@@ -444,6 +460,26 @@ for epoch in range(epochs):
                                                axis=1) !=0, 1, 0))
             print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
 
+
+
+        if i == 0:  #while-loop over time
+            train_time[(epoch-1)*num_updates + i] = elapsed  #while-loop over time
+        else:  #while-loop over time
+            train_time[(epoch-1)*num_updates + i] = train_time[i - 1] + elapsed  #while-loop over time
+
+        error_history_train[(epoch-1)*num_updates+i] = error_new_train  #while-loop over time
+        error_history_test[(epoch-1)*num_updates+i] = error_new_test  #while-loop over time
+        epochs_vec[(epoch-1)*num_updates+i] = epoch  #while-loop over time
+        traintime += elapsed  #while-loop over time
+        print(traintime)
+        np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//train_time_HF.npy',
+                    train_time)  #while-loop over time
+        np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_train_HF.npy',
+                   error_history_train)  #while-loop over time
+        np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_test_HF.npy',
+                   error_history_test)  #while-loop over time
+        np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_HF.npy',
+                   epochs_vec)  #while-loop over time
 
 #elapsed = time.time() - t
 print('test accuracy:', (10000 - wrong_classified) / 10000)
