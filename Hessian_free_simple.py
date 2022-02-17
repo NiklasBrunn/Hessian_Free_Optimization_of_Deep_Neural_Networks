@@ -26,15 +26,15 @@ tf.get_logger().setLevel(logging.ERROR)
 Data_Seed = 1 # Seed for generating the train- and test-data.
 Model_Seed = 1 # Seed for the initialisation of the NN parameters
 
-train_size = 1500 # number of observations for training.
-test_size = 500 # number of observations for testing.
+train_size = 2000 # number of observations for training.
+test_size = 1000 # number of observations for testing.
 batch_size_SGD = 100
-batch_size_GN = 300
-epochs = 25
+batch_size_GN = 500
+epochs = 150
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
 learningrate_SGD = 0.1
-model_neurons = [1, 15, 15, 1] # NN architecture (Layer dimensions).
+model_neurons = [1, 30, 30, 1] # NN architecture (Layer dimensions).
 
 SGD_allowed = True # NN training with SGD only if SGD_allowed = True.
 GN_allowed = True # NN training with the Hessian-Free method only if
@@ -147,7 +147,7 @@ def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, eps):
             s = 1 - phi_history[-k] / phi_history[-1]
 
         i += 1
-        print('CG-iterations for this batch:', i)
+    print('CG-iterations for this batch:', i)
     return v, phi_history[-1] - 0.5 * lam * tf.math.reduce_sum(v * v) + 2.0 * tf.math.reduce_sum(v * b)
 
 
@@ -180,12 +180,13 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     impr = loss - model_loss(y,  model(x))
 
     rho = impr / denom
+    print('Rho:', rho)
 
     if rho > 0.75:
         lam /= 1.5
     elif rho < 0.25:
         lam *= 1.5
-
+    print('Lam:', lam)
     return lam, update
 
 
