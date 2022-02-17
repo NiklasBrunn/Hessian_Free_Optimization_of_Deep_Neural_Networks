@@ -24,7 +24,7 @@ tf.get_logger().setLevel(logging.ERROR)
 # per iteration [if better than before], train loss per epoch, number of wrong
 # classified MNIST numbers)
 
-Model_Seed = 1 # seed for the random initialisation of the model parameters.
+Model_Seed = 17 # seed for the random initialisation of the model parameters.
 data_size = 60000
 batch_size = 1000 # for the 2nd order optimization method we recommend
 #                  a relatively large batchsize, e.g. >= 250 up to 1000.
@@ -37,12 +37,8 @@ acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
 
 fmv_version = 2 # options are 1, 2, 3 (version 2 and 3 work best!)
 #                (for the different versions see below in the code)
-train_method = 'fast_CG' # options are: 'SGD', 'CG_naiv', 'fast_CG'
-# -> with CG_naive we mean that we use an inefficient way to compute the
-#    matrix-vector-product, where we first compute and store all of the matrices
-#    in the product for the GGN and compute the matrix vector product GGN * v
-#    from right to left.
-# -> with fast_CG
+train_method = 'fast_CG' # options are: 'SGD', 'fast_CG'
+# -> with fast_CG we mean our implementation of the Hessian-Free algorithm
 Net = 'Dense' # options are 'Dense', 'CNN' (we used Dense for our experiments).
 model_neurons = [784, 500, 10] # number of neurons when choosing Dense
 
@@ -133,15 +129,6 @@ lam = 1
 #######################################
 #Fast matrix-vector-products functions:
 #######################################
-# Naive version of the matrix-vector-product; computation of the m-v-p from right
-# to left. The matrices used here are computed and stored before (very slow!)
-def fastmatvec_naive(v, jac_net, jac_softmax, lam):
-    prod1 = tf.linalg.matvec(jac_net, v)
-    prod2 = tf.linalg.matvec(jac_softmax, prod1)
-    prod3 = tf.linalg.matvec(jac_net, prod2, transpose_a=True)
-    return tf.reduce_mean(prod3, axis=0) + lam * v
-
-
 # Version 1; computation from right to left: (J_Net)' * J_Softmax * J_Net * v
 # u := J_Net * v with FAD
 # w := J_Softmax * u with FAD
@@ -214,17 +201,18 @@ def fastmatvec_V3(x_batch, y_batch, v, lam):
 # preconditioned_cg_method for every other fastmatvec function using FAD and BAD.
 def fast_preconditioned_cg_method(v, x_batch, y_batch, b, min_steps, eps):
     if fmv_version == 1:
-        r = b - fastmatvec_V1(x_batch, y_batch, v, lam)
+        A = fastmatvec_V1(x_batch, y_batch, v, lam)
     elif fmv_version == 2:
-        r = b - fastmatvec_V2(x_batch, y_batch, v, lam)
+        A = fastmatvec_V2(x_batch, y_batch, v, lam)
     else:
-        r = b - fastmatvec_V3(x_batch, y_batch, v, lam)
+        A = fastmatvec_V3(x_batch, y_batch, v, lam)
 
+    r = b - A
     M = (b**2 + lam) ** 0.75
     y = r/M
     d = y
-    i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * tf.math.reduce_sum(v*(b+r)))
+    i, s, k = 0, min_steps, min_steps
+    phi_history = np.array(0.5 * tf.math.reduce_sum(v*(A - 2.0 * b)))
     r_dot_y = tf.math.reduce_sum(r * y)
     while i <= k or s >= eps*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
@@ -234,53 +222,23 @@ def fast_preconditioned_cg_method(v, x_batch, y_batch, b, min_steps, eps):
             z = fastmatvec_V2(x_batch, y_batch, d, lam)
         else:
             z = fastmatvec_V3(x_batch, y_batch, d, lam)
-
         alpha = r_dot_y / tf.math.reduce_sum(d*z)
         z *= alpha
         v += alpha * d
+        A += z
         r -= z
         y -= z / M
         r_dot_y_new = tf.math.reduce_sum(r*y)
         d = y + d * r_dot_y_new / r_dot_y
         r_dot_y = r_dot_y_new
-        phi_history = np.append(phi_history, np.array(
-            - 0.5 * (tf.math.reduce_sum(v*(b+r)))))
+        phi_history = np.append(phi_history,
+                                0.5 * tf.math.reduce_sum(v * (A - 2.0 * b)))
         if i >= k:
             s = 1 - phi_history[-k] / phi_history[-1]
-        else:
-            s = k
-        i += 1
-    return v
 
-
-# preconditioned_cg_method for fastmatvec_naive:
-def preconditioned_cg_method_naive(A, B, x, b, min_steps, eps):
-    r = b - fastmatvec_naive(x, A, B, lam)
-    M = (b**2 + lam) ** 0.75
-    y = r/M
-    d = y
-    i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * tf.math.reduce_sum(x*(b+r)))
-    r_dot_y = tf.math.reduce_sum(r * y)
-    while i <= k or s >= eps*k or phi_history[-1] >= 0:
-        k = np.maximum(min_steps, int(i/min_steps))
-        z = fastmatvec_naive(d, A, B, lam)
-        alpha = r_dot_y / tf.math.reduce_sum(d*z)
-        z *= alpha
-        v += alpha * d
-        r -= z
-        y -= z / M
-        r_dot_y_new = tf.math.reduce_sum(r*y)
-        d = y + d * r_dot_y_new / r_dot_y
-        r_dot_y = r_dot_y_new
-        phi_history = np.append(phi_history, np.array(
-            - 0.5 * (tf.math.reduce_sum(x*(b+r)))))
-        if i >= k:
-            s = 1 - phi_history[-k] / phi_history[-1]
-        else:
-            s = k
         i += 1
-    return x
+    print('CG-iterations for this batch:', i)
+    return v, phi_history[-1] - 0.5 * lam * tf.math.reduce_sum(v * v) + 2.0 * tf.math.reduce_sum(v * b)
 
 
 ##############
@@ -295,7 +253,7 @@ def train_step_fast_generalized_gauss_newton(x, y, lam, update_old):
     grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
                           for i, g in enumerate(grad_obj)], axis=0))
 
-    update = fast_preconditioned_cg_method(update_old, x, y, grad_obj,
+    update, denom = fast_preconditioned_cg_method(update_old, x, y, grad_obj,
                                            CG_steps, acc_CG)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
@@ -307,63 +265,15 @@ def train_step_fast_generalized_gauss_newton(x, y, lam, update_old):
 
     impr = loss - model_loss(y,  model(x))
 
-    if fmv_version == 1:
-        rho = impr / tf.math.reduce_sum((grad_obj +
-                                         fastmatvec_V1(x, y, update, 0)) * update)
-    elif fmv_version == 2:
-        rho = impr / tf.math.reduce_sum((grad_obj +
-                                         fastmatvec_V2(x, y, update, 0)) * update)
-    else:
-        rho = impr / tf.math.reduce_sum((grad_obj +
-                                         fastmatvec_V3(x, y, update, 0)) * update)
+    rho = impr / denom
 
+    #print('rho:', rho)
     if rho > 0.75:
-        lam /= 1.01
+        lam /= 1.5
     elif rho < 0.25:
-        lam *= 1.01
+        lam *= 1.5
 
-    return lam, update
-
-
-# optimization using the precond._cg_method with the naive implementation of
-# fastmatvec (very slow!)
-def train_step_generalized_gauss_newton_naive(x, y, lam, update_old):
-    with tf.GradientTape(persistent=True) as tape:
-        y_pred = model(x)
-        akt_out = tf.nn.softmax(y_pred)
-        loss = model_loss(y, y_pred)
-
-    theta = model.trainable_variables
-    jac_softmax = tape.batch_jacobian(akt_out, y_pred)
-
-    jac = tape.jacobian(y_pred, theta)
-    jac = tf.concat([tf.reshape(h, [batch_size, model_neurons[-1], n_params[i]])
-                     for i, h in enumerate(jac)], axis=2)
-    grad_obj = tape.gradient(loss, theta)
-    grad_obj = tf.squeeze(tf.concat([tf.reshape(g, [n_params[i], 1])
-                          for i, g in enumerate(grad_obj)], axis=0))
-
-    update = preconditioned_cg_method_naive(jac,
-                                            jac_softmax, update_old, grad_obj,
-                                            CG_steps, acc_CG)
-
-    theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
-
-    theta_new = [p - tf.reshape(u, s)
-                 for (p, u, s) in zip(theta, theta_new, param_shape)]
-
-    model.set_weights(theta_new)
-
-    impr = loss - model_loss(y,  model(x))
-
-    rho = impr / tf.math.reduce_sum((grad_obj +
-                                     fastmatvec_naive(x, y, update, 0)) * update)
-
-    if rho > 0.75:
-        lam /= 1.01
-    elif rho < 0.25:
-        lam *= 1.01
-
+    #print('Lambda:', lam)
     return lam, update
 
 
@@ -381,24 +291,23 @@ def train_step_gradient_descent(x, y, eta):
     model.set_weights([p - u for (p, u) in zip(theta, update)])
 
 
-num_updates = int(data_size / batch_size)
-
-
 ##########
 #training:
 ##########
+num_updates = int(data_size / batch_size)
+
 #t = time.time()
 error_old = 100000
 traintime = 0  #while-loop over time
-epoch = 0  #while-loop over time
-#for epoch in range(epochs):  #for-loop over epochs
-while traintime <= 1500:   #while-loop over time
-    epoch += 1  #while-loop over time
+#epoch = 0  #while-loop over time
+for epoch in range(epochs):  #for-loop over epochs
+#while traintime <= 120:   #while-loop over time
+#    epoch += 1  #while-loop over time
 
     train_time = np.zeros(epochs*num_updates)  #while-loop over time
-    error_history_test = np.zeros(epochs*num_updates)  #while-loop over time
-    error_history_train = np.zeros(epochs*num_updates)  #while-loop over time
-    epochs_vec = np.zeros(epochs*num_updates)  #while-loop over time
+#    error_history_test = np.zeros(epochs*num_updates)  #while-loop over time
+    #error_history_train = np.zeros(epochs*num_updates)  #while-loop over time
+#    epochs_vec = np.zeros(epochs*num_updates)  #while-loop over time
 
     perm = np.random.permutation(data_size)
     x_train = np.take(x_train, perm, axis = 0)
@@ -407,8 +316,8 @@ while traintime <= 1500:   #while-loop over time
     print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, train_loss))
     for i in range(num_updates):
-        error_new_train = model_loss(y_train, model.predict(x_train))  #while-loop over time
-        error_new_test = model_loss(y_test, model.predict(x_test))  #while-loop over time
+        #error_new_train = model_loss(y_train, model.predict(x_train))  #while-loop over time
+    #    error_new_test = model_loss(y_test, model.predict(x_test))  #while-loop over time
 
         error_new = np.array(model_loss(y_test, model.predict(x_test)))
         if error_new < error_old:
@@ -419,21 +328,7 @@ while traintime <= 1500:   #while-loop over time
         start = i * batch_size
         end = start + batch_size
 
-        if train_method == 'CG_naiv':
-            #fastmatvec naiv (slow ...)
-            t = time.time()
-            lam, update_old = train_step_generalized_gauss_newton_naive(
-                x_train[start: end], y_train[start: end], lam, update_old)
-            elapsed = time.time() - t
-
-            print('estimated time for one batch update in epoch {}/{}: {:.4f}.'.format(str(epoch +
-                                                              1).zfill(len(str(epochs))), epochs, elapsed))
-            wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) -
-                                               np.argmax(tf.nn.softmax(model.predict(x_test)),
-                                                         axis=1) !=0, 1, 0))
-            print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
-
-        elif train_method == 'SGD':
+        if train_method == 'SGD':
             #standard SGD.
             t = time.time()
             train_step_gradient_descent(x_train[start: end], y_train[start: end],
@@ -445,7 +340,7 @@ while traintime <= 1500:   #while-loop over time
             wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) -
                                                np.argmax(tf.nn.softmax(model.predict(x_test)),
                                                          axis=1) !=0, 1, 0))
-            print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
+            print('wrong classified test-MNIST numbers:', int(wrong_classified))
 
         else:
             t = time.time()
@@ -458,7 +353,7 @@ while traintime <= 1500:   #while-loop over time
             wrong_classified = np.sum(np.where(np.argmax(y_test, axis=1) -
                                                np.argmax(tf.nn.softmax(model.predict(x_test)),
                                                axis=1) !=0, 1, 0))
-            print('falsch klassifizierte Test-MNIST-Zahlen:', int(wrong_classified))
+            print('wrong classified test-MNIST numbers:', int(wrong_classified))
 
 
 
@@ -467,19 +362,19 @@ while traintime <= 1500:   #while-loop over time
         else:  #while-loop over time
             train_time[(epoch-1)*num_updates + i] = train_time[i - 1] + elapsed  #while-loop over time
 
-        error_history_train[(epoch-1)*num_updates+i] = error_new_train  #while-loop over time
-        error_history_test[(epoch-1)*num_updates+i] = error_new_test  #while-loop over time
-        epochs_vec[(epoch-1)*num_updates+i] = epoch  #while-loop over time
+        #error_history_train[(epoch-1)*num_updates+i] = error_new_train  #while-loop over time
+#        error_history_test[(epoch-1)*num_updates+i] = error_new_test  #while-loop over time
+#        epochs_vec[(epoch-1)*num_updates+i] = epoch  #while-loop over time
         traintime += elapsed  #while-loop over time
-        print(traintime)
-        np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//train_time_HF.npy',
-                    train_time)  #while-loop over time
-        np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_train_HF.npy',
-                   error_history_train)  #while-loop over time
-        np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//error_history_test_HF.npy',
-                   error_history_test)  #while-loop over time
-        np.savetxt('/Users/niklasbrunn/Desktop/Numopt_Werte//epochs_HF.npy',
-                   epochs_vec)  #while-loop over time
+        print('estimated time for the train steps:', traintime)
+#np.savetxt('<insert path>//train_time_MNIST_SGD_100_01.npy',
+#            train_time)  #while-loop over time
+#np.savetxt('<insert path>//error_history_train_MNIST_SGD_100_01.npy',
+#                 error_history_train)  #while-loop over time
+#np.savetxt('<insert path>//error_history_test_MNIST_SGD_100_01.npy',
+#                 error_history_test)  #while-loop over time
+#np.savetxt('<insert path>//epochs_MNIST_SGD_100_01.npy',
+#                 epochs_vec)  #while-loop over time
 
 #elapsed = time.time() - t
 print('test accuracy:', (10000 - wrong_classified) / 10000)

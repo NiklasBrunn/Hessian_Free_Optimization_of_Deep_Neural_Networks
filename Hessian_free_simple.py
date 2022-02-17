@@ -121,12 +121,13 @@ def fastmatvec(x_batch, y_batch, v, lam):
 #CG-Algorithm function:
 #######################
 def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, eps):
-    r = b - fastmatvec(x_batch, y_batch, v, lam)
+    A = fastmatvec(x_batch, y_batch, v, lam)
+    r = b - A
     M = (b**2 + lam) ** 0.75
     y = r/M
     d = y
-    i, s, k = 0, 0, min_steps
-    phi_history = np.array(- 0.5 * tf.math.reduce_sum(v*(b+r)))
+    i, s, k = 0, min_steps, min_steps
+    phi_history = np.array(0.5 * tf.math.reduce_sum(v*(A - 2.0 * b)))
     r_dot_y = tf.math.reduce_sum(r * y)
     while i <= k or s >= eps*k or phi_history[-1] >= 0:
         k = np.maximum(min_steps, int(i/min_steps))
@@ -134,19 +135,20 @@ def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, eps):
         alpha = r_dot_y / tf.math.reduce_sum(d*z)
         z *= alpha
         v += alpha * d
+        A += z
         r -= z
         y -= z / M
         r_dot_y_new = tf.math.reduce_sum(r*y)
         d = y + d * r_dot_y_new / r_dot_y
         r_dot_y = r_dot_y_new
-        phi_history = np.append(phi_history, np.array(
-            - 0.5 * (tf.math.reduce_sum(v*(b+r)))))
+        phi_history = np.append(phi_history,
+                                0.5 * tf.math.reduce_sum(v * (A - 2.0 * b)))
         if i >= k:
             s = 1 - phi_history[-k] / phi_history[-1]
-        else:
-            s = k
+
         i += 1
-    return v
+        print('CG-iterations for this batch:', i)
+    return v, phi_history[-1] - 0.5 * lam * tf.math.reduce_sum(v * v) + 2.0 * tf.math.reduce_sum(v * b)
 
 
 ##############
@@ -165,7 +167,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
                                          for i, g in enumerate(grad_obj)],
                                         axis=0))
 
-    update = fast_preconditioned_cg_method(x, y, update_old, grad_obj,
+    update, denom = fast_preconditioned_cg_method(x, y, update_old, grad_obj,
                                                CG_steps, acc_CG)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
@@ -177,8 +179,7 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
 
     impr = loss - model_loss(y,  model(x))
 
-    rho = impr / tf.math.reduce_sum((grad_obj +
-                                     fastmatvec(x, y, update, 0)) * update)
+    rho = impr / denom
 
     if rho > 0.75:
         lam /= 1.5
