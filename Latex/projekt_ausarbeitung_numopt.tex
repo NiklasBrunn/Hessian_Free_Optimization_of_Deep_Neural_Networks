@@ -274,57 +274,17 @@ In contrast to (37), here we put more of the differentiation task in the backwar
 %using BAD. 
 
 
-\subsection{Tensorflow}
-We implement our version of the Hessian-Free method in Tensorflow [1] because it is one of the widly used packages for Machine Learning.
-Therefore we make use of Tensorflows pre-implemented FAD-command \href{https://www.tensorflow.org/api_docs/python/tf/autodiff/ForwardAccumulator}{tf.autodiff.ForwardAccumulator} and BAD-command \href{https://www.tensorflow.org/api_docs/python/tf/GradientTape}{tf.GradientTape}. Our code is avilable at our github repository \href{https://github.com/NiklasBrunn/Hessian_Free_Optimization_of_Deep_Neural_Networks}{(Github repository)}.
-
-
 \subsection{Damping condition}
 ...
 
 \subsection{CG precondition}
 ...
 
-\subsection{Figures and Tables}
-\paragraph{Positioning Figures and Tables} Place figures and tables at the top and 
-bottom of columns. Avoid placing them in the middle of columns. Large 
-figures and tables may span across both columns. Figure captions should be 
-below the figures; table heads should appear above the tables. Insert 
-figures and tables after they are cited in the text. Use the abbreviation 
-``Fig.~\ref{fig}'', even at the beginning of a sentence.
+\subsection{Tensorflow}
+We implement our version of the Hessian-Free method in Tensorflow [1] because it is one of the widly used packages for Machine Learning.
+Therefore we make use of Tensorflows pre-implemented FAD-command \href{https://www.tensorflow.org/api_docs/python/tf/autodiff/ForwardAccumulator}{tf.autodiff.ForwardAccumulator} and BAD-command \href{https://www.tensorflow.org/api_docs/python/tf/GradientTape}{tf.GradientTape}. Our code is avilable at our github repository \href{https://github.com/NiklasBrunn/Hessian_Free_Optimization_of_Deep_Neural_Networks}{(Github repository)}.
 
-\begin{table}[htbp]
-\caption{Table Type Styles}
-\begin{center}
-\begin{tabular}{|c|c|c|c|}
-\hline
-\textbf{Table}&\multicolumn{3}{|c|}{\textbf{Table Column Head}} \\
-\cline{2-4} 
-\textbf{Head} & \textbf{\textit{Table column subhead}}& \textbf{\textit{Subhead}}& \textbf{\textit{Subhead}} \\
-\hline
-copy& More table copy$^{\mathrm{a}}$& &  \\
-\hline
-\multicolumn{4}{l}{$^{\mathrm{a}}$Sample of a Table footnote.}
-\end{tabular}
-\label{tab1}
-\end{center}
-\end{table}
 
-\begin{figure}[htbp]
-\centerline{\includegraphics{fig1.png}}
-\caption{Example of a figure caption.}
-\label{fig}
-\end{figure}
-
-Figure Labels: Use 8 point Times New Roman for Figure labels. Use words 
-rather than symbols or abbreviations when writing Figure axis labels to 
-avoid confusing the reader. As an example, write the quantity 
-``Magnetization'', or ``Magnetization, M'', not just ``M''. If including 
-units in the label, present them within parentheses. Do not label axes only 
-with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization 
-\{A[m(1)]\}'', not just ``A/m''. Do not label axes with a ratio of 
-quantities and units. For example, write ``Temperature (K)'', not 
-``Temperature/K''.
 
 \section{Experiments}
 TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
@@ -423,6 +383,48 @@ TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
 
 \section*{Acknowledgment}
 We want to thank the lecture assistant Florian Messerer for suggesting this topic for the project and giving us some sources to research. 
+
+\section{Figure example}
+\subsection{Figures and Tables}
+\paragraph{Positioning Figures and Tables} Place figures and tables at the top and 
+bottom of columns. Avoid placing them in the middle of columns. Large 
+figures and tables may span across both columns. Figure captions should be 
+below the figures; table heads should appear above the tables. Insert 
+figures and tables after they are cited in the text. Use the abbreviation 
+``Fig.~\ref{fig}'', even at the beginning of a sentence.
+
+\begin{table}[htbp]
+	\caption{Table Type Styles}
+	\begin{center}
+		\begin{tabular}{|c|c|c|c|}
+			\hline
+			\textbf{Table}&\multicolumn{3}{|c|}{\textbf{Table Column Head}} \\
+			\cline{2-4} 
+			\textbf{Head} & \textbf{\textit{Table column subhead}}& \textbf{\textit{Subhead}}& \textbf{\textit{Subhead}} \\
+			\hline
+			copy& More table copy$^{\mathrm{a}}$& &  \\
+			\hline
+			\multicolumn{4}{l}{$^{\mathrm{a}}$Sample of a Table footnote.}
+		\end{tabular}
+		\label{tab1}
+	\end{center}
+\end{table}
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics{fig1.png}}
+	\caption{Example of a figure caption.}
+	\label{fig}
+\end{figure}
+
+Figure Labels: Use 8 point Times New Roman for Figure labels. Use words 
+rather than symbols or abbreviations when writing Figure axis labels to 
+avoid confusing the reader. As an example, write the quantity 
+``Magnetization'', or ``Magnetization, M'', not just ``M''. If including 
+units in the label, present them within parentheses. Do not label axes only 
+with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization 
+\{A[m(1)]\}'', not just ``A/m''. Do not label axes with a ratio of 
+quantities and units. For example, write ``Temperature (K)'', not 
+``Temperature/K''.
 
 
 \begin{thebibliography}{00}
