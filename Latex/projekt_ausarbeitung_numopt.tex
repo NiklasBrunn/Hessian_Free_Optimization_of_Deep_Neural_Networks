@@ -142,7 +142,7 @@ Newton`s method is an optimization method, where we update the decision variable
 \end{align}
 where $H_{f_{x, y}}(\theta_{k})$ denotes the Hessian of the OL with respect to the current DNN`s parameters $\theta_{k}$. One can obtain this by minimizing the local quadratic approximation
 \begin{align}
-q(\theta + \delta)_{x, y} &:= f_{x, y}(\theta) + J_{f_{x, y}}^{\mathrm{T}}\:\delta + \frac{1}{2}\:\delta^{\mathrm{T}}\:H_{f_{x, y}}(\theta)\:\delta\\
+q_{\theta_{k}}(\delta)&:= f_{x, y}(\theta) + J_{f_{x, y}}^{\mathrm{T}}\:\delta + \frac{1}{2}\:\delta^{\mathrm{T}}\:H_{f_{x, y}}(\theta)\:\delta\\
 &\approx f_{x, y}(\theta + \delta)
 \end{align}
 with respect to $\delta$. 
@@ -166,7 +166,7 @@ where $H_{(\hat{y}_{x})_{j}}$ denotes the Hessian of the DNN`s  $j$-th output, t
 %\begin{align}
 %\left(J_{L_{y}\circ \:\Phi}^{\mathrm{T}}\right)_{j}\approx 0\:\lor\:H_{(\hat{y}_{x})_{j}} \approx 0.
 %\end{align}
-This means that for a local optimum $\theta^{\star}$ we have $H_{f_x, y} \approx G_{f_x, y}$.   Moreover, by construction, the GGN is a symmetric matrix and positive semidefinite if $\mathrm{L_{y}\circ\:\Phi}$ is convex, since for every $v\in\mathbb{R}^{d}$ it holds that
+This means that for a local optimum $\theta^{\star}$ we have $H_{f_x, y} \approx G_{f_x, y}$.   Moreover, by construction, the GGN is a symmetric matrix and positive semidefinite if $L_{y}\circ\:\Phi$ is convex, since for every $v\in\mathbb{R}^{d}$ it holds that
 \begin{align}
 v^{\mathrm{T}}\:G_{f_{x, y}}\:v &= v^{\mathrm{T}}\:\left( J_{\hat{y}_{x}}^{\mathrm{T}}\:H_{L_{y}\circ\:\Phi}\:J_{\hat{y}_{x}}\right)\:v\\
 &= \left(J_{\hat{y}_{x}}\:v\right)^{\mathrm{T}}H_{L_{y}\circ\:\Phi}\left(J_{\hat{y}_{x}}\:v\right) \\
@@ -212,7 +212,7 @@ This approach allows us to efficiently approximate the parameter updates with at
 \subsection{Mini-batches}
 If we are facing a large observation data set with $N>>0$, it is common to split the data set into batches $B\subset D$ containing only a few random samples $M<<N$ of the entire data and apply the optimization algorithm to each of the generated batches for each iteration. The partition of $D$ into smaler batches is called a mini-batch szenario, where $M$ denotes the batchsize of the mini-batches. For each mini-batch $B$ the DGGN in (23) becomes
 \begin{align}
-DG_{f_{\mathrm{M}}} := \frac{1}{M}\sum_{(x, y)\in B}^{}G_{f_{x, y}} + \lambda\cdot I^{d\times d}.
+DG_{f_{B}} := \frac{1}{M}\sum_{(x, y)\in B}^{}G_{f_{x, y}} + \lambda\cdot I^{d\times d}.
 \end{align}
 As mentioned in [3], the batch size should be relatively large to capture enough information about the curvature of the OL and for to ensure stability in optimization . 
 
@@ -223,7 +223,7 @@ For the implementation of the Hessian-Free optimization method, we will first ex
 
 
 \subsection{Efficiant computation of matrix-vector-products}
-For the implementation of the Hessian-Free optimization method we use an efficient way to calculate matrix-vector-products in the CG-iterations. This idea was first presented in [8] using results from [7]. We now consider the product of the DGGN with an arbitrary vector $v$ that we want to compute in an efficient way.
+For the implementation of the Hessian-Free optimization method we use an efficient way to calculate matrix-vector-products in the CG-iterations. Note that the only time where we need to compute a matrix-vector-product is in each CG-iteration once and additionally one time for the full CG-run. This idea was first presented in [8] using results from [7]. We now consider the product of the DGGN with an arbitrary vector $v$ that we want to compute in an efficient way.
 Therefore we make use of FAD and BAD since it is well known (e.g. chapter 10 in [2]) that for a vector valued function $F:\mathbb{R}^{n}\rightarrow\mathbb{R}^{m}$ we can compute the Jacobian-vector-product at a cost of only
 \begin{align}
 \mathrm{cost}_{\text{FAD}}(J_{F}\:v)\leq 2\:\mathrm{cost}(F),\\
@@ -275,10 +275,24 @@ In contrast to (37), here we put more of the differentiation task in the backwar
 
 
 \subsection{Damping condition}
-...
+In the previous section we introduced the DGGN with a positive damping value $\lambda$. This value can be understood as a kind of learning rate which shoud be updated after each CG run for the parameter updates in (28) and thus be denoted by $\lambda_{k}$. As explained in [4] we define the reduction ration
+\begin{align}
+\rho := \frac{f_{B}(\theta_{k}) - f_{B}(\theta_{k+1})}{q_{\theta_{k}}(\Delta\theta_{k + 1}) - q_{\theta_{k}}(0)}
+\end{align}
+and then update the value $\lambda_{k}$ according to the rule
+\begin{align}
+&\textbf{if}\:\rho<\frac{1}{4}:\\
+ &\text{ }\text{ }\text{ }\text{ }\lambda_{k+1} = r\cdot\lambda_{k}\\
+&\textbf{elif}\:\rho>\frac{3}{4}:\\
+ &\text{ }\text{ }\text{ }\text{ }\lambda_{k + 1} = r^{-1}\cdot\lambda_{k}\\
+&\textbf{else}: \\
+ &\text{ }\text{ }\text{ }\text{ }\lambda_{k + 1} = \lambda_{k}\\
+&\textbf{return}:\:\lambda_{k + 1},
+\end{align}
+where $r=1.5$.
+In our experiments we found that for a smaler batch size we need to adjust the update amount of the damping value to a smaler size, e.g. $r=1.01$, because otherwise the optimization gets unstable in the training process.
 
-\subsection{CG precondition}
-...
+
 
 \subsection{Tensorflow}
 We implement our version of the Hessian-Free method in Tensorflow [1] because it is one of the widly used packages for Machine Learning.
@@ -294,12 +308,12 @@ TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
 	\SetKwInOut{Input}{Input}
 	\SetKwInOut{Output}{Output}
 	\SetKwInOut{CG}{\textbf{pre-CG-result}}
-	\SetKwInOut{LAM}{\textbf{$\lambda$-update($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
+	\SetKwInOut{LAM}{\textbf{$\lambda$-update($B$, $\Delta\theta_{k+1}$, $\lambda$)}}
 	\caption{Hessian-Free pseudocode for (10)}\label{alg:one}
-	\Input{$\mathrm{D}$, $\theta_{0}$, $\lambda$, epochs}
+	\Input{$D$, $\theta_{0}$, $\lambda$, epochs}
     \For{epoch in epochs}{
     	$k\gets 0$\\
-	    \For{$(x, y)$ in $\mathrm{D}$}{
+	    \For{$(x, y)$ in $D$}{
 	        $J_{f_{x, y}}^{\mathrm{T}}(\theta_{k})\:$(compute with BAD)\\
             \CG{$\Delta\theta_{k+1}$}
             $\theta_{k+1}\gets \theta_{k} + \Delta\theta_{k+1}$\\
@@ -315,19 +329,19 @@ TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
 	\SetKwInOut{Input}{Input}
 	\SetKwInOut{Output}{Output}
 	\SetKwInOut{CG}{\textbf{pre-CG-result}}
-	\SetKwInOut{LAM}{\textbf{$\lambda$-update($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
+	\SetKwInOut{LAM}{\textbf{$\lambda$-update($B$, $\Delta\theta_{k+1}$, $\lambda$)}}
 	\caption{(Mini-batch)-Hessian-Free pseudocode for (10)}\label{alg:two}
-	\Input{$\mathrm{D}_{batched}$, $M$, $\theta_{0}$, $\lambda$, epochs}
+	\Input{$D_{\mathrm{batched}}$, $B$, $\theta_{0}$, $\lambda$, epochs}
 	\For{$epoch$ in epochs}{
 		$k\gets 0$\\
-		\For{$\mathrm{M}$ in $\mathrm{D}_{batched}$}{
-		    $J_{f_{\mathrm{M}}}^{\mathrm{T}}(\theta_{k})\:$(compute with BAD)\\
+		\For{$B$ in $D_{\mathrm{batched}}$}{
+		    $J_{f_{B}}^{\mathrm{T}}(\theta_{k})\:$(compute with BAD)\\
 			\CG{$\Delta\theta_{k+1}$}
 			$\theta_{k+1}\gets \theta_{k} + \Delta\theta_{k+1}$\\
 			\LAM{$\lambda$}    
 			$k\gets k+1$
 		}
-	    $\theta_{0}\gets \theta_{M}$	
+	    $\theta_{0}\gets \theta_{\frac{N}{M}}$	
 	}
     \Output{$\theta^{trained}$}
 \end{algorithm}
@@ -337,13 +351,13 @@ TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
 	\SetKwInOut{Output}{Output}
 	\SetKwInOut{CG}{\textbf{pre-CG-result}}
 	\SetKwInOut{LAM}{\textbf{$\lambda$-update}}
-	\SetKwInOut{FMV}{\textbf{fast-mat-vec-out($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
+	\SetKwInOut{FMV}{\textbf{fast-mat-vec-out($B$, $\Delta\theta_{k+1}$, $\lambda$)}}
 	\caption{Condition for $\lambda$-updates}\label{alg:three}
-	\Input{$\Delta\theta_{k+1}$, $f_{\mathrm{M}}(\theta_{k})$ $DG_{f_{\mathrm{M}}}(\theta_{k})\:\Delta\theta_{k+1}$}
-	$loss_{\mathrm{old}}\gets f_{\mathrm{M}}(\theta_{k})$\\
-	$loss_{\mathrm{new}}\gets f_{\mathrm{M}}(\theta_{k}+\Delta\theta_{k+1})$\\
-	$A\:\Delta\theta_{k+1}\gets DG_{f_{\mathrm{M}}}(\theta_{k})\:\Delta\theta_{k+1}$\\
-	$denom \gets J_{f_{\mathrm{M}}}^{\mathrm{T}}\cdot\Delta\theta_{k+1} + \frac{1}{2}\Delta\theta_{k+1}^{\mathrm{T}}A\:\Delta\theta_{k+1}$
+	\Input{$\Delta\theta_{k+1}$, $f_{B}(\theta_{k})$ $DG_{f_{B}}(\theta_{k})\:\Delta\theta_{k+1}$}
+	$loss_{\mathrm{old}}\gets f_{B}(\theta_{k})$\\
+	$loss_{\mathrm{new}}\gets f_{B}(\theta_{k}+\Delta\theta_{k+1})$\\
+	$A\:\Delta\theta_{k+1}\gets DG_{f_{B}}(\theta_{k})\:\Delta\theta_{k+1}$\\
+	$denom \gets J_{f_{B}}^{\mathrm{T}}\cdot\Delta\theta_{k+1} + \frac{1}{2}\Delta\theta_{k+1}^{\mathrm{T}}A\:\Delta\theta_{k+1}$
 	$\rho\gets loss_{\mathrm{old}}\:-\:loss_{\mathrm{new}}\cdot(denom)^{-1}$\\
 	\text{}\\
 	\If{$\rho<\frac{1}{4}$}{$\lambda\gets \frac{3}{2}\:\lambda$}
@@ -355,19 +369,19 @@ TODO: ALGORITHMS (FAST-MAT-VEC-Pseudocode und CG-Pseudocode)
 	\SetKwInOut{Input}{Input}
 	\SetKwInOut{Output}{Output}
 	\SetKwInOut{CG}{\textbf{pre-CG-result}}
-	\SetKwInOut{LAM}{\textbf{$\lambda$-update($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
+	\SetKwInOut{LAM}{\textbf{$\lambda$-update($B$, $\Delta\theta_{k+1}$, $\lambda$)}}
 	\caption{Fast matrix-vector produkts (DGGN multiplied with an arbitrary vector $v$)}\label{alg:four}
-	\Input{$\mathrm{M}$, $v$, $\lambda$, $\theta_{k}$}
-	$G_{f_{\mathrm{M}}}(\theta_{k})\:v$ (compute with FAD and BAD)\\
-	$DG_{f_{\mathrm{M}}}(\theta_{k})\: v \gets G_{f_{\mathrm{M}}}\: v + \lambda\cdot I^{d\times d}\:v$\\
-	\Output{$DG_{f_{\mathrm{M}}}(\theta_{k})\: v$}
+	\Input{$B$, $v$, $\lambda$, $\theta_{k}$}
+	$G_{f_{B}}(\theta_{k})\:v$ (compute with FAD and BAD)\\
+	$DG_{f_{B}}(\theta_{k})\: v \gets G_{f_{B}}\: v + \lambda\cdot I^{d\times d}\:v$\\
+	\Output{$DG_{f_{B}}(\theta_{k})\: v$}
 \end{algorithm}
 
 \begin{algorithm}
 	\SetKwInOut{Input}{Input}
 	\SetKwInOut{Output}{Output}
 	\SetKwInOut{CG}{\textbf{pre-CG-result}}
-	\SetKwInOut{LAM}{\textbf{$\lambda$-update($\mathrm{M}$, $\Delta\theta_{k+1}$, $\lambda$)}}
+	\SetKwInOut{LAM}{\textbf{$\lambda$-update($B$, $\Delta\theta_{k+1}$, $\lambda$)}}
 	\caption{(preconditioned) CG method}\label{alg:five}
 	
 \end{algorithm}
