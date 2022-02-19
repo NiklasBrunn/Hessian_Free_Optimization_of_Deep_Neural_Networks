@@ -34,6 +34,7 @@ learningrate_SGD = 0.1 # one can choose a learningrate for SGD optimization.
 CG_steps = 3 # we recommend 3 for MNIST, more steps (e.g. 10) result in longer
 #              computation time but also the loss will decrease marginally
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
+lam_up = 1.5 # set the amount for lambda updates.
 
 fmv_version = 2 # options are 1, 2, 3 (version 2 and 3 work best!)
 #                (for the different versions see below in the code)
@@ -269,9 +270,9 @@ def train_step_fast_generalized_gauss_newton(x, y, lam, update_old):
 
     #print('rho:', rho)
     if rho > 0.75:
-        lam /= 1.5
+        lam /= lam_up
     elif rho < 0.25:
-        lam *= 1.5
+        lam *= lam_up
 
     #print('Lambda:', lam)
     return lam, update

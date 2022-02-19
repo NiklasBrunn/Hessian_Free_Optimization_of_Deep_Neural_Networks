@@ -33,6 +33,7 @@ batch_size_GN = 1000
 epochs = 200
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
+lam_up = 1.5 # set the amount for lambda updates.
 learningrate_SGD = 0.01
 model_neurons = [1, 15, 15, 1] # NN architecture (Layer dimensions).
 
@@ -187,9 +188,9 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     print('Rho:', rho)
 
     if rho > 0.75:
-        lam /= 1.5
+        lam /= lam_up
     elif rho < 0.25:
-        lam *= 1.5
+        lam *= lam_up
     print('Lam:', lam)
     return lam, update
 
