@@ -1,6 +1,6 @@
-###################################################################
-#Hessian-Free Optimization algorithm for simple simulated x^2-data:
-###################################################################
+###########################################################################
+#Hessian-Free Optimization algorithm for simple simulated sin- or x^2-data:
+###########################################################################
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,17 +29,18 @@ Model_Seed = 1 # Seed for the initialisation of the NN parameters
 train_size = 2000 # number of observations for training.
 test_size = 1000 # number of observations for testing.
 batch_size_SGD = 100
-batch_size_GN = 500
-epochs = 150
+batch_size_GN = 1000
+epochs = 200
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
-learningrate_SGD = 0.1
-model_neurons = [1, 30, 30, 1] # NN architecture (Layer dimensions).
+learningrate_SGD = 0.01
+model_neurons = [1, 15, 15, 1] # NN architecture (Layer dimensions).
 
 SGD_allowed = True # NN training with SGD only if SGD_allowed = True.
 GN_allowed = True # NN training with the Hessian-Free method only if
 #                   GN_allowed = True.
 
+sim_data = 'sin' # choose the simulated dataset: 'sin', 'square'.
 plotting = True # showing plots only if plotting is set to True!
 
 
@@ -48,8 +49,12 @@ plotting = True # showing plots only if plotting is set to True!
 #########################################
 # function for generating x^2 data with noise:
 def toy_data_generator(size, noise):
-    x = tf.random.normal([size, model_neurons[0]])
-    y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
+    if sim_data == 'sin':
+        x = 2 * tf.random.normal([size, model_neurons[0]])
+        y = np.sin(x) + noise * tf.random.normal([size, model_neurons[0]])
+    elif sim_data == 'square':
+        x = tf.random.normal([size, model_neurons[0]])
+        y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
     return x, y
 
 #generating train- and test-data:
@@ -145,7 +150,6 @@ def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, eps):
                                 0.5 * tf.math.reduce_sum(v * (A - 2.0 * b)))
         if i >= k:
             s = 1 - phi_history[-k] / phi_history[-1]
-
         i += 1
     print('CG-iterations for this batch:', i)
     return v, phi_history[-1] - 0.5 * lam * tf.math.reduce_sum(v * v) + 2.0 * tf.math.reduce_sum(v * b)
@@ -211,10 +215,19 @@ def train_step_gradient_descent(x, y, eta):
 # generating plots:
 f, ((ax0, ax1, ax3, ax5), (ax7, ax2, ax4, ax6)) = plt.subplots(2, 4,
                                                                figsize=(18, 8))
-a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
-ax0.scatter(x_train, y_train, label='Train Data', c='red', s=0.3)
-ax0.plot(a, a**2, label='Ground Truth', c='green')
 
+if sim_data == 'sin':
+    a = np.linspace(-4, 4, 250)
+    ax0.plot(a, np.sin(a), label='Ground Truth', c='green', linewidth=2)
+    ax0.set_ylim(-2.2, 2.2)
+    ax0.set_xlim(-5, 5)
+elif sim_data == 'square':
+    a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
+    ax0.plot(a, a**2, label='Ground Truth', c='green', linewidth=2)
+    ax0.set_ylim(-0.6, 10)
+    ax0.set_xlim(-np.sqrt(10), np.sqrt(10))
+
+ax0.scatter(x_train, y_train, label='Train Data', c='red', s=0.05)
 
 #SGD-training:
 num_updates = int(train_size / batch_size_SGD)
@@ -256,7 +269,8 @@ if SGD_allowed == True:
             end = start + batch_size_SGD
 
             s = time.time()
-            train_step_gradient_descent(x_train[start: end], y_train[start: end], learningrate_SGD)
+            train_step_gradient_descent(x_train[start: end],
+                                        y_train[start: end], learningrate_SGD)
             elapseds = time.time() - s
             #print('estimated time for the batch-update step:', elapseds, 'sec')
 
@@ -275,7 +289,7 @@ if SGD_allowed == True:
 
     # prediction-plot of the model:
     x = model.predict(a)
-    ax0.plot(a, x, label='Prediction SGD', c='blue')
+    ax0.plot(a, x, label='Prediction SGD', c='blue', linewidth=1.2)
 
 #np.savetxt('<insert path>//train_time_SGD.npy',
 #          train_time_SGD)
@@ -364,7 +378,7 @@ if GN_allowed == True:
 
     # prediction-plot of the model:
     x = model.predict(a)
-    ax0.plot(a, x, label='Prediction GN', c='orange')
+    ax0.plot(a, x, label='Prediction Hessian-Free', c='orange', linewidth=1.2)
 
 #np.savetxt('<insert path>//train_time_SGD.npy',
 #            train_time_SGD)
@@ -375,10 +389,12 @@ if GN_allowed == True:
 #np.savetxt('<insert path>//epochs_SGD.npy',
 #           epochs_SGD)
 
-ax0.set_ylim(-0.6, 10)
-ax0.set_xlim(-np.sqrt(10), np.sqrt(10))
+#ax0.set_ylim(-0.6, 10)
+#ax0.set_ylim(-3.5, 3.5)
+#ax0.set_xlim(-np.sqrt(10), np.sqrt(10))
+#ax0.set_xlim(-4, 4)
 ax0.set_title('Data and Predictions')
-ax0.legend(loc='upper right')
+ax0.legend(loc='upper right', prop={'size': 6})
 
 
 #######
@@ -393,9 +409,9 @@ ax1.set_ylim(-0.005, 0.1)
 ax1.set_xlim(0.5, epochs)
 
 if GN_allowed == True:
-    ax1.plot(epoch_vec_GN, train_loss_vec_GN, 'b', label='Hessian_free', linewidth=0.8)
+    ax1.plot(epoch_vec_GN, train_loss_vec_GN, 'b', label='Hessian-Free', linewidth=0.8)
 
-ax1.legend(loc='upper right')
+ax1.legend(loc='upper right', prop={'size': 6})
 
 #Test_loss_epochs_plot:
 ax2.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r',label='SGD', linewidth=0.8)
@@ -406,9 +422,9 @@ ax2.set_ylim(-0.005, 0.1)
 ax2.set_xlim(0.5, epochs)
 
 if GN_allowed == True:
-    ax2.plot(epoch_vec_GN, test_loss_vec_GN, 'b', label='Hessian_free', linewidth=0.8)
+    ax2.plot(epoch_vec_GN, test_loss_vec_GN, 'b', label='Hessian-Free', linewidth=0.8)
 
-ax2.legend(loc='upper right')
+ax2.legend(loc='upper right', prop={'size': 6})
 
 #Train_loss_time_plot:
 ax3.plot(time_vec_SGD, train_loss_vec_SGD, 'r',label='SGD', linewidth=0.8)
@@ -418,9 +434,9 @@ ax3.set_title('Train-Loss per Time:')
 ax3.set_ylim(-0.005, 0.05)
 
 if GN_allowed == True:
-    ax3.plot(time_vec_GN, train_loss_vec_GN, 'b', label='Hessian_free', linewidth=0.8)
+    ax3.plot(time_vec_GN, train_loss_vec_GN, 'b', label='Hessian-Free', linewidth=0.8)
 
-ax3.legend(loc='upper right')
+ax3.legend(loc='upper right', prop={'size': 6})
 
 #Test_loss_time_plot:
 ax4.plot(time_vec_SGD, test_loss_vec_SGD, 'r', label='SGD', linewidth=0.8)
@@ -430,20 +446,20 @@ ax4.set_title('Test-Loss per Time:')
 ax4.set_ylim(-0.005, 0.05)
 
 if GN_allowed == True:
-    ax4.plot(time_vec_GN, test_loss_vec_GN, 'b', label='Hessian_free', linewidth=0.8)
+    ax4.plot(time_vec_GN, test_loss_vec_GN, 'b', label='Hessian-Free', linewidth=0.8)
 
-ax4.legend(loc='upper right')
+ax4.legend(loc='upper right', prop={'size': 6})
 
 #Loss per Epochs GN:
-ax5.plot(epoch_vec_GN, train_loss_vec_GN, 'r', label='Hessian_free_Train', linewidth=1.2)
+ax5.plot(epoch_vec_GN, train_loss_vec_GN, 'r', label='Hessian-free_Train', linewidth=1.2)
 ax5.set_xlabel('Epochs')
 ax5.set_ylabel('Loss')
-ax5.set_title('Loss per Epochs (Hessian_free)')
+ax5.set_title('Loss per Epochs (Hessian-Free)')
 
 if GN_allowed == True:
-    ax5.plot(epoch_vec_GN, test_loss_vec_GN, 'b', label='Hessian_free_Test', linewidth=1.2)
+    ax5.plot(epoch_vec_GN, test_loss_vec_GN, 'b', label='Hessian-Free_Test', linewidth=1.2)
 
-ax5.legend(loc='upper right')
+ax5.legend(loc='upper right', prop={'size': 6})
 
 #Loss per Epochs SGD:
 ax6.plot(epoch_vec_GN, train_loss_vec_SGD, 'r', label='SGD_Train', linewidth=1.2)
@@ -454,7 +470,7 @@ ax6.set_title('Loss per Epochs (SGD)')
 if GN_allowed == True:
     ax6.plot(epoch_vec_GN, test_loss_vec_SGD, 'b', label='SGD_Test', linewidth=1.2)
 
-ax6.legend(loc='upper right')
+ax6.legend(loc='upper right', prop={'size': 6})
 
 #placeholder:
 ax7.plot([0], [0], 'r', linewidth=0.1)
