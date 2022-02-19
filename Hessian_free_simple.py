@@ -393,10 +393,7 @@ if GN_allowed == True:
 #np.savetxt('<insert path>//epochs_SGD.npy',
 #           epochs_SGD)
 
-#ax0.set_ylim(-0.6, 10)
-#ax0.set_ylim(-3.5, 3.5)
-#ax0.set_xlim(-np.sqrt(10), np.sqrt(10))
-#ax0.set_xlim(-4, 4)
+
 ax0.set_title('Data and Predictions')
 ax0.legend(loc='upper right', prop={'size': 6})
 
