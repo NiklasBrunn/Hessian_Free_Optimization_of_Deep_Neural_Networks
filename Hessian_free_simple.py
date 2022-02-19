@@ -30,8 +30,8 @@ train_size = 2000 # number of observations for training.
 test_size = 1000 # number of observations for testing.
 batch_size_SGD = 100
 batch_size_GN = 1000
-epochs_SGD = 1000
-epochs_GN = 300
+epochs_SGD = 10
+epochs_GN = 5
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
 lam_up = 1.1 # set the amount for lambda updates.
@@ -483,7 +483,7 @@ ax6.legend(loc='upper right', prop={'size': 6})
 
 #lambda-plot:
 if GN_allowed == True:
-    ax7.plot(epoch_vec_GN, lam_vec_GN, 'r', label='Lambda value', linewidth=0.8)
+    ax7.plot(epoch_vec_GN, lam_vec_GN, 'r', label='Lambda value '+ '{}{}{}'.format('(lambda update value: ', lam_up,')'), linewidth=0.8)
 
 ax7.set_xlabel('Epochs')
 ax7.set_ylabel('Lambda')
