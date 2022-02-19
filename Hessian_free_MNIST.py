@@ -34,7 +34,7 @@ learningrate_SGD = 0.1 # one can choose a learningrate for SGD optimization.
 CG_steps = 3 # we recommend 3 for MNIST, more steps (e.g. 10) result in longer
 #              computation time but also the loss will decrease marginally
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
-lam_up = 1.5 # set the amount for lambda updates.
+lam_up = 1.5 # set the amount for lambda updates(1.5 is a good standard choice).
 
 fmv_version = 2 # options are 1, 2, 3 (version 2 and 3 work best!)
 #                (for the different versions see below in the code)

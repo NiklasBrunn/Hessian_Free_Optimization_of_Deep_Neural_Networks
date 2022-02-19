@@ -34,7 +34,7 @@ epochs_SGD = 1000
 epochs_GN = 285
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
-lam_up = 1.1 # set the amount for lambda updates.
+lam_up = 1.1 # set the amount for lambda updates(1.5 is a good standard choice).
 learningrate_SGD = 0.1
 model_neurons = [1, 15, 15, 1] # NN architecture (Layer dimensions).
 
