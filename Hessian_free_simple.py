@@ -291,7 +291,8 @@ if SGD_allowed == True:
 
     # prediction-plot of the model:
     x = model.predict(a)
-    ax0.plot(a, x, label='{}{}{}'.format('Prediction SGD(lr=', learningrate_SGD, ')'), c='blue', linewidth=1.2)
+    ax0.plot(a, x, label='{}{}{}'.format('Prediction SGD(lr=', learningrate_SGD, ')'),
+             c='blue', linewidth=1.2)
 
 #np.savetxt('<insert path>//train_time_SGD.npy',
 #          train_time_SGD)
@@ -382,7 +383,8 @@ if GN_allowed == True:
 
     # prediction-plot of the model:
     x = model.predict(a)
-    ax0.plot(a, x, label='{}{}{}'.format('Prediction Hessian-Free(CG=', CG_steps, ')'), c='orange', linewidth=1.2)
+    ax0.plot(a, x, label='{}{}{}'.format('Prediction Hessian-Free(CG=', CG_steps, ')'),
+             c='orange', linewidth=1.2)
 
 #np.savetxt('<insert path>//train_time_SGD.npy',
 #            train_time_SGD)
@@ -403,7 +405,9 @@ ax0.legend(loc='upper right', prop={'size': 6})
 #######
 #Train_loss_epochs_plot:
 if SGD_allowed == True:
-    ax1.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r',label='{}{}{}'.format('SGD(lr=', learningrate_SGD, ')'), linewidth=0.8)
+    ax1.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r',
+             label='{}{}{}'.format('SGD(lr=', learningrate_SGD, ')'),
+             linewidth=0.8)
 ax1.set_xlabel('Epochs')
 ax1.set_ylabel('Train-Loss')
 ax1.set_title('Train-Loss per Epochs:')
@@ -411,13 +415,17 @@ ax1.set_ylim(-0.005, 0.1)
 ax1.set_xlim(0.5, max(epochs_SGD, epochs_GN))
 
 if GN_allowed == True:
-    ax1.plot(epoch_vec_GN, train_loss_vec_GN, 'b', label='{}{}{}'.format('Hessian-Free(CG=', CG_steps, ')'), linewidth=0.8)
+    ax1.plot(epoch_vec_GN, train_loss_vec_GN, 'b',
+             label='{}{}{}'.format('Hessian-Free(CG=', CG_steps, ')'),
+             linewidth=0.8)
 
 ax1.legend(loc='upper right', prop={'size': 6})
 
 #Test_loss_epochs_plot:
 if SGD_allowed == True:
-    ax2.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r',label='{}{}{}'.format('SGD(lr=', learningrate_SGD, ')'), linewidth=0.8)
+    ax2.plot(epoch_vec_SGD, test_loss_vec_SGD, 'r',
+             label='{}{}{}'.format('SGD(lr=', learningrate_SGD, ')'),
+             linewidth=0.8)
 ax2.set_xlabel('Epochs')
 ax2.set_ylabel('Test-Loss')
 ax2.set_title('Test-Loss per Epochs:')
@@ -425,13 +433,17 @@ ax2.set_ylim(-0.005, 0.1)
 ax2.set_xlim(0.5, max(epochs_SGD, epochs_GN))
 
 if GN_allowed == True:
-    ax2.plot(epoch_vec_GN, test_loss_vec_GN, 'b', label='{}{}{}'.format('Hessian-Free(CG=', CG_steps, ')'), linewidth=0.8)
+    ax2.plot(epoch_vec_GN, test_loss_vec_GN, 'b',
+             label='{}{}{}'.format('Hessian-Free(CG=', CG_steps, ')'),
+             linewidth=0.8)
 
 ax2.legend(loc='upper right', prop={'size': 6})
 
 #Train_loss_time_plot:
 if SGD_allowed == True:
-    ax3.plot(time_vec_SGD, train_loss_vec_SGD, 'r',label='{}{}{}'.format('SGD(lr=', learningrate_SGD, ')'), linewidth=0.8)
+    ax3.plot(time_vec_SGD, train_loss_vec_SGD, 'r',
+             label='{}{}{}'.format('SGD(lr=', learningrate_SGD, ')'),
+             linewidth=0.8)
 ax3.set_xlabel('Time (in seconds)')
 ax3.set_ylabel('Train-Loss')
 ax3.set_title('Train-Loss per Time:')
@@ -439,13 +451,17 @@ ax3.set_ylim(-0.005, 0.05)
 ax3.set_xlim(-0.005, max(time_vec_SGD[-1], time_vec_GN[-1]))
 
 if GN_allowed == True:
-    ax3.plot(time_vec_GN, train_loss_vec_GN, 'b', label='{}{}{}'.format('Hessian-Free(CG=', CG_steps, ')'), linewidth=0.8)
+    ax3.plot(time_vec_GN, train_loss_vec_GN, 'b',
+             label='{}{}{}'.format('Hessian-Free(CG=', CG_steps, ')'),
+             linewidth=0.8)
 
 ax3.legend(loc='upper right', prop={'size': 6})
 
 #Test_loss_time_plot:
 if SGD_allowed == True:
-    ax4.plot(time_vec_SGD, test_loss_vec_SGD, 'r', label='{}{}{}'.format('SGD(lr=', learningrate_SGD, ')'), linewidth=0.8)
+    ax4.plot(time_vec_SGD, test_loss_vec_SGD, 'r',
+             label='{}{}{}'.format('SGD(lr=', learningrate_SGD, ')'),
+             linewidth=0.8)
 ax4.set_xlabel('Time (in seconds)')
 ax4.set_ylabel('Test-Loss')
 ax4.set_title('Test-Loss per Time:')
@@ -453,37 +469,49 @@ ax4.set_ylim(-0.005, 0.05)
 ax4.set_xlim(-0.005, max(time_vec_SGD[-1], time_vec_GN[-1]))
 
 if GN_allowed == True:
-    ax4.plot(time_vec_GN, test_loss_vec_GN, 'b', label='{}{}{}'.format('Hessian-Free(CG=', CG_steps, ')'), linewidth=0.8)
+    ax4.plot(time_vec_GN, test_loss_vec_GN, 'b',
+             label='{}{}{}'.format('Hessian-Free(CG=', CG_steps, ')'),
+             linewidth=0.8)
 
 ax4.legend(loc='upper right', prop={'size': 6})
 
 #Loss per Epochs GN:
 if GN_allowed == True:
-    ax5.plot(epoch_vec_GN, train_loss_vec_GN, 'r', label='{}{}{}'.format('Hessian-Free train(CG=', CG_steps, ')'), linewidth=1.2)
+    ax5.plot(epoch_vec_GN, train_loss_vec_GN, 'r',
+             label='{}{}{}'.format('Hessian-Free train(CG=', CG_steps, ')'),
+             linewidth=1.2)
 ax5.set_xlabel('Epochs')
 ax5.set_ylabel('Loss')
 ax5.set_title('Loss per Epochs (Hessian-Free)')
 
 if GN_allowed == True:
-    ax5.plot(epoch_vec_GN, test_loss_vec_GN, 'b', label='{}{}{}'.format('Hessian-Free test(CG=', CG_steps, ')'), linewidth=1.2)
+    ax5.plot(epoch_vec_GN, test_loss_vec_GN, 'b',
+             label='{}{}{}'.format('Hessian-Free test(CG=', CG_steps, ')'),
+             linewidth=1.2)
 
 ax5.legend(loc='upper right', prop={'size': 6})
 
 #Loss per Epochs SGD:
 if SGD_allowed == True:
-    ax6.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r', label='{}{}{}'.format('SGD train(lr=', learningrate_SGD, ')'), linewidth=1.2)
+    ax6.plot(epoch_vec_SGD, train_loss_vec_SGD, 'r',
+             label='{}{}{}'.format('SGD train(lr=', learningrate_SGD, ')'),
+             linewidth=1.2)
 ax6.set_xlabel('Epochs')
 ax6.set_ylabel('Loss')
 ax6.set_title('Loss per Epochs (SGD)')
 
 if SGD_allowed == True:
-    ax6.plot(epoch_vec_SGD, test_loss_vec_SGD, 'b', label='{}{}{}'.format('SGD test(lr=', learningrate_SGD, ')'), linewidth=1.2)
+    ax6.plot(epoch_vec_SGD, test_loss_vec_SGD, 'b',
+             label='{}{}{}'.format('SGD test(lr=', learningrate_SGD, ')'),
+             linewidth=1.2)
 
 ax6.legend(loc='upper right', prop={'size': 6})
 
 #lambda-plot:
 if GN_allowed == True:
-    ax7.plot(epoch_vec_GN, lam_vec_GN, 'r', label='Lambda value '+ '{}{}{}'.format('(lambda update value: ', lam_up,')'), linewidth=0.8)
+    ax7.plot(epoch_vec_GN, lam_vec_GN, 'r',
+             label='Lambda value '+ '{}{}{}'.format('(lambda update value: ', lam_up,')'),
+             linewidth=0.8)
 
 ax7.set_xlabel('Epochs')
 ax7.set_ylabel('Lambda')
