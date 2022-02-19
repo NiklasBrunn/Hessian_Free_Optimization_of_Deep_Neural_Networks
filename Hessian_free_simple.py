@@ -26,17 +26,19 @@ tf.get_logger().setLevel(logging.ERROR)
 Data_Seed = 1 # Seed for generating the train- and test-data.
 Model_Seed = 1 # Seed for the initialisation of the NN parameters
 
-train_size = 2000 # number of observations for training.
-test_size = 1000 # number of observations for testing.
-batch_size_SGD = 100
+train_size = 10000 # number of observations for training.
+test_size = 1500 # number of observations for testing.
+
+batch_size_SGD = 1000
 batch_size_GN = 1000
-epochs_SGD = 1000
-epochs_GN = 285
+epochs_SGD = 2000
+epochs_GN = 250
+
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
-lam_up = 1.1 # set the amount for lambda updates(1.5 is a good standard choice).
+lam_up = 1.25 # set the amount for lambda updates(1.5 is a good standard choice).
 learningrate_SGD = 0.1
-model_neurons = [1, 15, 15, 1] # NN architecture (Layer dimensions).
+model_neurons = [1, 20, 20, 1] # NN architecture (Layer dimensions).
 
 SGD_allowed = True # NN training with SGD only if SGD_allowed = True.
 GN_allowed = True # NN training with the Hessian-Free method only if
@@ -52,8 +54,10 @@ plotting = True # showing plots only if plotting is set to True!
 # function for generating x^2 data with noise:
 def toy_data_generator(size, noise):
     if sim_data == 'sin':
-        x = 2 * tf.random.normal([size, model_neurons[0]])
-        y = np.sin(x) + noise * tf.random.normal([size, model_neurons[0]])
+        #x = 2 * tf.random.normal([size, model_neurons[0]])
+        x = np.random.uniform(-1, 1, [size, model_neurons[0]]) # easy sin
+        #y = np.sin(x) + noise * tf.random.normal([size, model_neurons[0]])
+        y = np.sin(10*x) + noise * tf.random.normal([size, model_neurons[0]]) # easy sin
     elif sim_data == 'square':
         x = tf.random.normal([size, model_neurons[0]])
         y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
@@ -77,12 +81,20 @@ def model_loss(y_true, y_pred):
 # generating the NN with Dense-Layers:
 tf.random.set_seed(Model_Seed)
 
-input_layer = tf.keras.Input(shape=(model_neurons[0],))
-layer_1 = tf.keras.layers.Dense(model_neurons[1],
-                                activation='relu')(input_layer)
-layer_2 = tf.keras.layers.Dense(model_neurons[2],
-                                activation='relu')(layer_1)
-layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
+if sim_data == 'sin':
+    input_layer = tf.keras.Input(shape=(model_neurons[0],))
+    layer_1 = tf.keras.layers.Dense(model_neurons[1],
+                                    activation='sigmoid')(input_layer)
+    layer_2 = tf.keras.layers.Dense(model_neurons[2],
+                                    activation='sigmoid')(layer_1)
+    layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
+elif sim_data == 'square':
+    input_layer = tf.keras.Input(shape=(model_neurons[0],))
+    layer_1 = tf.keras.layers.Dense(model_neurons[1],
+                                    activation='relu')(input_layer)
+    layer_2 = tf.keras.layers.Dense(model_neurons[2],
+                                    activation='relu')(layer_1)
+    layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
 
 model = tf.keras.Model(input_layer, layer_3, name='Model')
 
@@ -218,10 +230,14 @@ f, ((ax0, ax1, ax3, ax5), (ax7, ax2, ax4, ax6)) = plt.subplots(2, 4,
                                                                figsize=(18, 8))
 
 if sim_data == 'sin':
-    a = np.linspace(-4, 4, 250)
-    ax0.plot(a, np.sin(a), label='Ground Truth', c='green', linewidth=2)
+    #a = np.linspace(-4, 4, 250) # easy sin
+    #ax0.plot(a, np.sin(a), label='Ground Truth', c='green', linewidth=2) # easy sin
+    #ax0.set_ylim(-2.2, 2.2) # easy sin
+    #ax0.set_xlim(-5, 5) # easy sin
+    a = np.linspace(-1, 1, 250)
+    ax0.plot(a, np.sin(10*a), label='Ground Truth', c='green', linewidth=1)
     ax0.set_ylim(-2.2, 2.2)
-    ax0.set_xlim(-5, 5)
+    ax0.set_xlim(-1.01, 1.01)
 elif sim_data == 'square':
     a = np.linspace(-np.sqrt(10), np.sqrt(10), 250)
     ax0.plot(a, a**2, label='Ground Truth', c='green', linewidth=2)
@@ -411,7 +427,8 @@ if SGD_allowed == True:
 ax1.set_xlabel('Epochs')
 ax1.set_ylabel('Train-Loss')
 ax1.set_title('Train-Loss per Epochs:')
-ax1.set_ylim(-0.005, 0.1)
+#ax1.set_ylim(-0.005, 0.1)
+ax1.set_yscale('log')
 ax1.set_xlim(0.5, max(epochs_SGD, epochs_GN))
 
 if GN_allowed == True:
@@ -429,7 +446,8 @@ if SGD_allowed == True:
 ax2.set_xlabel('Epochs')
 ax2.set_ylabel('Test-Loss')
 ax2.set_title('Test-Loss per Epochs:')
-ax2.set_ylim(-0.005, 0.1)
+#ax2.set_ylim(-0.005, 0.1)
+ax2.set_yscale('log')
 ax2.set_xlim(0.5, max(epochs_SGD, epochs_GN))
 
 if GN_allowed == True:
@@ -447,7 +465,8 @@ if SGD_allowed == True:
 ax3.set_xlabel('Time (in seconds)')
 ax3.set_ylabel('Train-Loss')
 ax3.set_title('Train-Loss per Time:')
-ax3.set_ylim(-0.005, 0.05)
+#ax3.set_ylim(-0.005, 0.05)
+ax3.set_yscale('log')
 ax3.set_xlim(-0.005, max(time_vec_SGD[-1], time_vec_GN[-1]))
 
 if GN_allowed == True:
@@ -465,7 +484,8 @@ if SGD_allowed == True:
 ax4.set_xlabel('Time (in seconds)')
 ax4.set_ylabel('Test-Loss')
 ax4.set_title('Test-Loss per Time:')
-ax4.set_ylim(-0.005, 0.05)
+#ax4.set_ylim(-0.005, 0.05)
+ax4.set_yscale('log')
 ax4.set_xlim(-0.005, max(time_vec_SGD[-1], time_vec_GN[-1]))
 
 if GN_allowed == True:
@@ -516,7 +536,7 @@ if GN_allowed == True:
 ax7.set_xlabel('Epochs')
 ax7.set_ylabel('Lambda')
 ax7.set_title('Lambda updates Hessian-Free')
-ax7.set_ylim(-0.05, 1.05)
+ax7.set_ylim(-0.05, 1.5)
 ax7.set_xlim(-0.05, epochs_GN)
 ax7.legend(loc='upper right', prop={'size': 6})
 
