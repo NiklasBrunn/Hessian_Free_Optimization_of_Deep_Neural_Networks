@@ -30,12 +30,12 @@ train_size = 2000 # number of observations for training.
 test_size = 1000 # number of observations for testing.
 batch_size_SGD = 100
 batch_size_GN = 1000
-epochs_SGD = 10
-epochs_GN = 5
+epochs_SGD = 1000
+epochs_GN = 285
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
 lam_up = 1.1 # set the amount for lambda updates.
-learningrate_SGD = 0.01
+learningrate_SGD = 0.05
 model_neurons = [1, 15, 15, 1] # NN architecture (Layer dimensions).
 
 SGD_allowed = True # NN training with SGD only if SGD_allowed = True.
