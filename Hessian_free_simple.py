@@ -29,10 +29,10 @@ Model_Seed = 1 # Seed for the initialisation of the NN parameters
 train_size = 10000 # number of observations for training.
 test_size = 1500 # number of observations for testing.
 
-batch_size_SGD = 1000
+batch_size_SGD = 250
 batch_size_GN = 1000
-epochs_SGD = 2000
-epochs_GN = 250
+epochs_SGD = 1000
+epochs_GN = 150
 
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
@@ -165,7 +165,7 @@ def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, eps):
         if i >= k:
             s = 1 - phi_history[-k] / phi_history[-1]
         i += 1
-    print('CG-iterations for this batch:', i)
+    #print('CG-iterations for this batch:', i)
     return v, phi_history[-1] - 0.5 * lam * tf.math.reduce_sum(v * v) + 2.0 * tf.math.reduce_sum(v * b)
 
 
@@ -198,13 +198,13 @@ def train_step_generalized_gauss_newton(x, y, lam, update_old):
     impr = loss - model_loss(y,  model(x))
 
     rho = impr / denom
-    print('Rho:', rho)
+    #print('Rho:', rho)
 
     if rho > 0.75:
         lam /= lam_up
     elif rho < 0.25:
         lam *= lam_up
-    print('Lam:', lam)
+    #print('Lam:', lam)
     return lam, update
 
 
@@ -429,7 +429,7 @@ ax1.set_ylabel('Train-Loss')
 ax1.set_title('Train-Loss per Epochs:')
 #ax1.set_ylim(-0.005, 0.1)
 ax1.set_yscale('log')
-ax1.set_xlim(0.5, max(epochs_SGD, epochs_GN))
+ax1.set_xlim(0.5, min(epochs_SGD, epochs_GN))
 
 if GN_allowed == True:
     ax1.plot(epoch_vec_GN, train_loss_vec_GN, 'b',
@@ -448,7 +448,7 @@ ax2.set_ylabel('Test-Loss')
 ax2.set_title('Test-Loss per Epochs:')
 #ax2.set_ylim(-0.005, 0.1)
 ax2.set_yscale('log')
-ax2.set_xlim(0.5, max(epochs_SGD, epochs_GN))
+ax2.set_xlim(0.5, min(epochs_SGD, epochs_GN))
 
 if GN_allowed == True:
     ax2.plot(epoch_vec_GN, test_loss_vec_GN, 'b',
@@ -467,7 +467,7 @@ ax3.set_ylabel('Train-Loss')
 ax3.set_title('Train-Loss per Time:')
 #ax3.set_ylim(-0.005, 0.05)
 ax3.set_yscale('log')
-ax3.set_xlim(-0.005, max(time_vec_SGD[-1], time_vec_GN[-1]))
+ax3.set_xlim(-0.005, min(time_vec_SGD[-1], time_vec_GN[-1]))
 
 if GN_allowed == True:
     ax3.plot(time_vec_GN, train_loss_vec_GN, 'b',
@@ -486,7 +486,7 @@ ax4.set_ylabel('Test-Loss')
 ax4.set_title('Test-Loss per Time:')
 #ax4.set_ylim(-0.005, 0.05)
 ax4.set_yscale('log')
-ax4.set_xlim(-0.005, max(time_vec_SGD[-1], time_vec_GN[-1]))
+ax4.set_xlim(-0.005, min(time_vec_SGD[-1], time_vec_GN[-1]))
 
 if GN_allowed == True:
     ax4.plot(time_vec_GN, test_loss_vec_GN, 'b',
