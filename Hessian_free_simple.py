@@ -27,12 +27,12 @@ Data_Seed = 1 # Seed for generating the train- and test-data.
 Model_Seed = 1 # Seed for the initialisation of the NN parameters
 
 train_size = 10000 # number of observations for training.
-test_size = 1500 # number of observations for testing.
+test_size = 1000 # number of observations for testing.
 
-batch_size_SGD = 250
+batch_size_SGD = 1000
 batch_size_GN = 1000
-epochs_SGD = 1000
-epochs_GN = 150
+epochs_SGD = 1000 #1000
+epochs_GN = 150 #150
 
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
@@ -327,12 +327,20 @@ epochs = epochs_GN
 # NN parameters than above for the SGD-training.
 tf.random.set_seed(Model_Seed)
 
-input_layer = tf.keras.Input(shape=(model_neurons[0],))
-layer_1 = tf.keras.layers.Dense(model_neurons[1],
-                                activation='relu')(input_layer)
-layer_2 = tf.keras.layers.Dense(model_neurons[2],
-                                activation='relu')(layer_1)
-layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
+if sim_data == 'sin':
+    input_layer = tf.keras.Input(shape=(model_neurons[0],))
+    layer_1 = tf.keras.layers.Dense(model_neurons[1],
+                                    activation='sigmoid')(input_layer)
+    layer_2 = tf.keras.layers.Dense(model_neurons[2],
+                                    activation='sigmoid')(layer_1)
+    layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
+elif sim_data == 'square':
+    input_layer = tf.keras.Input(shape=(model_neurons[0],))
+    layer_1 = tf.keras.layers.Dense(model_neurons[1],
+                                    activation='relu')(input_layer)
+    layer_2 = tf.keras.layers.Dense(model_neurons[2],
+                                    activation='relu')(layer_1)
+    layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
 
 model = tf.keras.Model(input_layer, layer_3, name='Model')
 
