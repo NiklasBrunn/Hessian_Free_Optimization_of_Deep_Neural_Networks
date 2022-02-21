@@ -31,8 +31,8 @@ test_size = 1000 # number of observations for testing.
 
 batch_size_SGD = 1000
 batch_size_GN = 1000
-epochs_SGD = 4000
-epochs_GN = 200 
+epochs_SGD = 6000
+epochs_GN = 450
 
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
@@ -164,11 +164,12 @@ def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, eps):
                                 0.5 * tf.math.reduce_sum(v * (A - 2.0 * b)))
         if i >= k:
             s = 1 - phi_history[-k] / phi_history[-1]
-        i += 1
-        A_v = (phi_history[-1] - 0.5 * lam * tf.math.reduce_sum(v * v) +
+
+        denom = (phi_history[-1] - 0.5 * lam * tf.math.reduce_sum(v * v) +
                2.0 * tf.math.reduce_sum(v * b))
+        i += 1
     #print('CG-iterations for this batch:', i)
-    return v, A_v
+    return v, denom
 
 
 ##############
