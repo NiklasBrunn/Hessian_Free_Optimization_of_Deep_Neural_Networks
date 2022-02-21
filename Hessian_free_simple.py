@@ -31,7 +31,7 @@ test_size = 1000 # number of observations for testing.
 
 batch_size_SGD = 1000
 batch_size_GN = 1000
-epochs_SGD = 500 #1000
+epochs_SGD = 2000 #1000
 epochs_GN = 150 #150
 
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
@@ -84,9 +84,9 @@ tf.random.set_seed(Model_Seed)
 if sim_data == 'sin':
     input_layer = tf.keras.Input(shape=(model_neurons[0],))
     layer_1 = tf.keras.layers.Dense(model_neurons[1],
-                                    activation='sigmoid')(input_layer)
+                                    activation='tanh')(input_layer) #sigmoid
     layer_2 = tf.keras.layers.Dense(model_neurons[2],
-                                    activation='sigmoid')(layer_1)
+                                    activation='tanh')(layer_1)
     layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
 elif sim_data == 'square':
     input_layer = tf.keras.Input(shape=(model_neurons[0],))
@@ -335,9 +335,9 @@ tf.random.set_seed(Model_Seed)
 if sim_data == 'sin':
     input_layer = tf.keras.Input(shape=(model_neurons[0],))
     layer_1 = tf.keras.layers.Dense(model_neurons[1],
-                                    activation='sigmoid')(input_layer)
+                                    activation='tanh')(input_layer) #sigmoid
     layer_2 = tf.keras.layers.Dense(model_neurons[2],
-                                    activation='sigmoid')(layer_1)
+                                    activation='tanh')(layer_1)
     layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
 elif sim_data == 'square':
     input_layer = tf.keras.Input(shape=(model_neurons[0],))
