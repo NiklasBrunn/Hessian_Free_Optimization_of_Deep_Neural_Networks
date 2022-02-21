@@ -31,8 +31,8 @@ test_size = 1000 # number of observations for testing.
 
 batch_size_SGD = 1000
 batch_size_GN = 1000
-epochs_SGD = 4000 #1000
-epochs_GN = 200 #150
+epochs_SGD = 4000
+epochs_GN = 200 
 
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
