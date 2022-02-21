@@ -31,12 +31,12 @@ test_size = 1000 # number of observations for testing.
 
 batch_size_SGD = 1000
 batch_size_GN = 1000
-epochs_SGD = 1000 #1000
+epochs_SGD = 500 #1000
 epochs_GN = 150 #150
 
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
-lam_up = 1.25 # set the amount for lambda updates(1.5 is a good standard choice).
+lam_up = 1.5 # set the amount for lambda updates(1.5 is a good standard choice).
 learningrate_SGD = 0.1
 model_neurons = [1, 20, 20, 1] # NN architecture (Layer dimensions).
 
@@ -165,8 +165,10 @@ def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, eps):
         if i >= k:
             s = 1 - phi_history[-k] / phi_history[-1]
         i += 1
+        A_v = (phi_history[-1] - 0.5 * lam * tf.math.reduce_sum(v * v) +
+               2.0 * tf.math.reduce_sum(v * b))
     #print('CG-iterations for this batch:', i)
-    return v, phi_history[-1] - 0.5 * lam * tf.math.reduce_sum(v * v) + 2.0 * tf.math.reduce_sum(v * b)
+    return v, A_v
 
 
 ##############
@@ -260,6 +262,8 @@ time_vec_SGD = np.zeros(epochs)
 #error_history_train_SGD = np.zeros(epochs*num_updates)
 #epochs_SGD = np.zeros(epochs*num_updates)
 
+tf.random.set_seed(Model_Seed) # for same permutations
+
 if SGD_allowed == True:
     for epoch in range(epochs):
         perm = np.random.permutation(train_size)
@@ -322,6 +326,7 @@ if SGD_allowed == True:
 
 # GN-TRAINING:
 epochs = epochs_GN
+num_updates = int(train_size / batch_size_GN)
 # redefining the untrained NN:
 # for a fair comparison we use the same seed for the initialisation of the
 # NN parameters than above for the SGD-training.
@@ -347,6 +352,9 @@ model = tf.keras.Model(input_layer, layer_3, name='Model')
 model.compile(loss=model_loss)
 model.summary()
 
+update_old = tf.zeros(ind[-1])
+lam = 1
+
 
 test_loss_vec_GN = np.zeros(epochs)
 train_loss_vec_GN = np.zeros(epochs)
@@ -359,8 +367,9 @@ lam_vec_GN = np.zeros(epochs)
 #error_history_train_GN = np.zeros(epochs*num_updates)
 #epochs_GN = np.zeros(epochs*num_updates)
 
+tf.random.set_seed(Model_Seed) # for same permutations
+
 if GN_allowed == True:
-    num_updates = int(train_size / batch_size_GN)
     for epoch in range(epochs):
         perm = np.random.permutation(train_size)
         x_train = np.take(x_train, perm, axis = 0)
@@ -544,7 +553,7 @@ if GN_allowed == True:
 ax7.set_xlabel('Epochs')
 ax7.set_ylabel('Lambda')
 ax7.set_title('Lambda updates Hessian-Free')
-ax7.set_ylim(-0.05, 1.5)
+ax7.set_ylim(-0.05, 2.0)
 ax7.set_xlim(-0.05, epochs_GN)
 ax7.legend(loc='upper right', prop={'size': 6})
 
