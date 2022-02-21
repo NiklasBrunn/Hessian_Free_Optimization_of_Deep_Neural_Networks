@@ -54,10 +54,8 @@ plotting = True # showing plots only if plotting is set to True!
 # function for generating x^2 data with noise:
 def toy_data_generator(size, noise):
     if sim_data == 'sin':
-        #x = 2 * tf.random.normal([size, model_neurons[0]])
-        x = np.random.uniform(-1, 1, [size, model_neurons[0]]) # easy sin
-        #y = np.sin(x) + noise * tf.random.normal([size, model_neurons[0]])
-        y = np.sin(10*x) + noise * tf.random.normal([size, model_neurons[0]]) # easy sin
+        x = np.random.uniform(-1, 1, [size, model_neurons[0]])
+        y = np.sin(10*x) + noise * tf.random.normal([size, model_neurons[0]])
     elif sim_data == 'square':
         x = tf.random.normal([size, model_neurons[0]])
         y = x ** 2 + noise * tf.random.normal([size, model_neurons[0]])
@@ -84,7 +82,7 @@ tf.random.set_seed(Model_Seed)
 if sim_data == 'sin':
     input_layer = tf.keras.Input(shape=(model_neurons[0],))
     layer_1 = tf.keras.layers.Dense(model_neurons[1],
-                                    activation='tanh')(input_layer) #sigmoid
+                                    activation='tanh')(input_layer)
     layer_2 = tf.keras.layers.Dense(model_neurons[2],
                                     activation='tanh')(layer_1)
     layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
@@ -233,10 +231,6 @@ f, ((ax0, ax1, ax3, ax5), (ax7, ax2, ax4, ax6)) = plt.subplots(2, 4,
                                                                figsize=(18, 8))
 
 if sim_data == 'sin':
-    #a = np.linspace(-4, 4, 250) # easy sin
-    #ax0.plot(a, np.sin(a), label='Ground Truth', c='green', linewidth=2) # easy sin
-    #ax0.set_ylim(-2.2, 2.2) # easy sin
-    #ax0.set_xlim(-5, 5) # easy sin
     a = np.linspace(-1, 1, 250)
     ax0.plot(a, np.sin(10*a), label='Ground Truth', c='green', linewidth=1)
     ax0.set_ylim(-2.2, 2.2)
@@ -336,7 +330,7 @@ tf.random.set_seed(Model_Seed)
 if sim_data == 'sin':
     input_layer = tf.keras.Input(shape=(model_neurons[0],))
     layer_1 = tf.keras.layers.Dense(model_neurons[1],
-                                    activation='tanh')(input_layer) #sigmoid
+                                    activation='tanh')(input_layer) 
     layer_2 = tf.keras.layers.Dense(model_neurons[2],
                                     activation='tanh')(layer_1)
     layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
