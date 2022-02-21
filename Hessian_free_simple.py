@@ -31,8 +31,8 @@ test_size = 1000 # number of observations for testing.
 
 batch_size_SGD = 1000
 batch_size_GN = 1000
-epochs_SGD = 2000 #1000
-epochs_GN = 150 #150
+epochs_SGD = 4000 #1000
+epochs_GN = 200 #150
 
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
@@ -246,7 +246,7 @@ elif sim_data == 'square':
     ax0.set_ylim(-0.6, 10)
     ax0.set_xlim(-np.sqrt(10), np.sqrt(10))
 
-ax0.scatter(x_train, y_train, label='Train Data', c='red', s=0.05)
+ax0.scatter(x_train, y_train, label='Train Data', c='red', s=0.01)
 
 #SGD-training:
 epochs = epochs_SGD
