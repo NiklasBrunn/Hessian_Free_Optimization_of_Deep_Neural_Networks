@@ -40,7 +40,7 @@ fmv_version = 2 # options are 1, 2, 3 (version 2 and 3 work best!),
 train_method = 'fast_CG' # options are: 'SGD', 'fast_CG'
 # -> with fast_CG we mean our implementation of the Hessian-Free algorithm
 Net = 'Dense' # options are 'Dense', 'CNN' (we used Dense for our experiments).
-model_neurons = [784, 500, 10] # number of neurons when choosing Dense
+model_neurons = [784, 800, 10] # number of neurons when choosing Dense
 
 
 ####################
