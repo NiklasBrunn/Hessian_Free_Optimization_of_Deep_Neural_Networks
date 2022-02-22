@@ -28,16 +28,15 @@ Model_Seed = 17 # seed for the random initialisation of the model parameters.
 data_size = 60000
 batch_size = 1000 # for the 2nd order optimization method we recommend
 #                  a relatively large batchsize, e.g. >= 250 up to 1000.
-#                  In our Experiments we used 250 (and 300).
 epochs = 250
-learningrate_SGD = 0.1 # one can choose a learningrate for SGD optimization.
+learningrate_SGD = 0.1 # choose a learningrate for SGD optimization.
 CG_steps = 3 # we recommend 3 for MNIST, more steps (e.g. 10) result in longer
-#              computation time but also the loss will decrease marginally
+#              computation time.
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
-lam_up = 1.5 # set the amount for lambda updates(1.5 is a good standard choice).
+lam_up = 1.5 # set the amount for lambda updates (1.5 is a good choice).
 
-fmv_version = 2 # options are 1, 2, 3 (version 2 and 3 work best!)
-#                (for the different versions see below in the code)
+fmv_version = 2 # options are 1, 2, 3 (version 2 and 3 work best!),
+#                 (for the different versions see below in the code).
 train_method = 'fast_CG' # options are: 'SGD', 'fast_CG'
 # -> with fast_CG we mean our implementation of the Hessian-Free algorithm
 Net = 'Dense' # options are 'Dense', 'CNN' (we used Dense for our experiments).
@@ -83,27 +82,27 @@ elif Net == 'CNN':
 def model_loss(y_true, y_pred):
     return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_true, y_pred))
 
+
 #def model_loss(y_true, y_pred):
     #return tf.reduce_mean(-tf.math.reduce_sum(y_true * tf.math.log(tf.nn.softmax(y_pred)),
     #                                          axis=0))
-# the above loss function is just a different loss function that works surprisingly well but
-# has nothing to do with the actual task
+# the above uncommented loss function is just a different loss function that
+# works surprisingly well but has nothing to do with the actual task
 
+
+tf.random.set_seed(Model_Seed)
 
 if Net == 'Dense':
     # creating Dense-NN:
-    tf.random.set_seed(Model_Seed)
-
     input_layer = tf.keras.Input(shape=(model_neurons[0]))
-    layer_1 = tf.keras.layers.Dense(model_neurons[1], activation='relu')(input_layer)
+    layer_1 = tf.keras.layers.Dense(model_neurons[1],
+                                    activation='relu')(input_layer)
     layer_2 = tf.keras.layers.Dense(model_neurons[2])(layer_1)
 
     model = tf.keras.Model(input_layer, layer_2, name='Model')
 
 elif Net == 'CNN':
     # creating CNN:
-    tf.random.set_seed(Model_Seed)
-
     inputs = tf.keras.Input(shape=(28, 28, 1))
     x = tf.keras.layers.Conv2D(16, (3, 3),strides=(2, 2),
                                padding="same", activation='relu')(inputs)
@@ -260,22 +259,18 @@ def train_step_fast_generalized_gauss_newton(x, y, lam, update_old):
                                            CG_steps, acc_CG)
 
     theta_new = [update[i:j] for (i, j) in zip(ind[:-1], ind[1:])]
-
     theta_new = [p - tf.reshape(u, s)
                  for (p, u, s) in zip(theta, theta_new, param_shape)]
 
     model.set_weights(theta_new)
 
     impr = loss - model_loss(y,  model(x))
-
     rho = impr / denom
-
     #print('rho:', rho)
     if rho > 0.75:
         lam /= lam_up
     elif rho < 0.25:
         lam *= lam_up
-
     #print('Lambda:', lam)
     return lam, update
 
@@ -285,7 +280,6 @@ def train_step_gradient_descent(x, y, eta):
     with tf.GradientTape() as tape:
         y_pred = model(x)
         loss = model_loss(y, y_pred)
-
     theta = model.trainable_variables
     grad_loss = tape.gradient(loss, theta)
 
@@ -298,19 +292,10 @@ def train_step_gradient_descent(x, y, eta):
 #training:
 ##########
 num_updates = int(data_size / batch_size)
-
-#t = time.time()
 error_old = 100000
-traintime = 0  #while-loop over time
-#epoch = 0  #while-loop over time
-for epoch in range(epochs):  #for-loop over epochs
-#while traintime <= 120:   #while-loop over time
-#    epoch += 1  #while-loop over time
+traintime = 0
 
-    train_time = np.zeros(epochs*num_updates)  #while-loop over time
-#    error_history_test = np.zeros(epochs*num_updates)  #while-loop over time
-    #error_history_train = np.zeros(epochs*num_updates)  #while-loop over time
-#    epochs_vec = np.zeros(epochs*num_updates)  #while-loop over time
+for epoch in range(epochs):
 
     perm = np.random.permutation(data_size)
     x_train = np.take(x_train, perm, axis = 0)
@@ -319,9 +304,6 @@ for epoch in range(epochs):  #for-loop over epochs
     print('Epoch {}/{}. Loss on train data: {:.4f}.'.format(str(epoch +
                                                                1).zfill(len(str(epochs))), epochs, train_loss))
     for i in range(num_updates):
-        #error_new_train = model_loss(y_train, model.predict(x_train))  #while-loop over time
-    #    error_new_test = model_loss(y_test, model.predict(x_test))  #while-loop over time
-
         error_new = np.array(model_loss(y_test, model.predict(x_test)))
         if error_new < error_old:
             print('Epoch {}/{}. Loss on test data: {:.4f}.'.format(str(epoch +
@@ -359,25 +341,7 @@ for epoch in range(epochs):  #for-loop over epochs
             print('wrong classified test-MNIST numbers:', int(wrong_classified))
 
 
-
-        if i == 0:  #while-loop over time
-            train_time[(epoch-1)*num_updates + i] = elapsed  #while-loop over time
-        else:  #while-loop over time
-            train_time[(epoch-1)*num_updates + i] = train_time[i - 1] + elapsed  #while-loop over time
-
-        #error_history_train[(epoch-1)*num_updates+i] = error_new_train  #while-loop over time
-#        error_history_test[(epoch-1)*num_updates+i] = error_new_test  #while-loop over time
-#        epochs_vec[(epoch-1)*num_updates+i] = epoch  #while-loop over time
         traintime += elapsed  #while-loop over time
-        print('estimated time for the train steps:', traintime)
-#np.savetxt('<insert path>//train_time_MNIST_SGD_100_01.npy',
-#            train_time)  #while-loop over time
-#np.savetxt('<insert path>//error_history_train_MNIST_SGD_100_01.npy',
-#                 error_history_train)  #while-loop over time
-#np.savetxt('<insert path>//error_history_test_MNIST_SGD_100_01.npy',
-#                 error_history_test)  #while-loop over time
-#np.savetxt('<insert path>//epochs_MNIST_SGD_100_01.npy',
-#                 epochs_vec)  #while-loop over time
+        print('sum of estimated time for the train steps:', traintime)
 
-#elapsed = time.time() - t
 print('test accuracy:', (10000 - wrong_classified) / 10000)

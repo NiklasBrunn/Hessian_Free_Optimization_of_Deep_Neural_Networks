@@ -36,7 +36,7 @@ epochs_GN = 450
 
 CG_steps = 3 # minimum number of steps in CG (max. is the dim. of the params.).
 acc_CG = 0.0005 # accuracy in the CG algorithm (termination criterion).
-lam_up = 1.5 # set the amount for lambda updates(1.5 is a good standard choice).
+lam_up = 1.5 # set the amount for lambda updates (1.5 is a good choice).
 learningrate_SGD = 0.1
 model_neurons = [1, 20, 20, 1] # NN architecture (Layer dimensions).
 
@@ -322,6 +322,7 @@ if SGD_allowed == True:
 # GN-TRAINING:
 epochs = epochs_GN
 num_updates = int(train_size / batch_size_GN)
+
 # redefining the untrained NN:
 # for a fair comparison we use the same seed for the initialisation of the
 # NN parameters than above for the SGD-training.
@@ -330,7 +331,7 @@ tf.random.set_seed(Model_Seed)
 if sim_data == 'sin':
     input_layer = tf.keras.Input(shape=(model_neurons[0],))
     layer_1 = tf.keras.layers.Dense(model_neurons[1],
-                                    activation='tanh')(input_layer) 
+                                    activation='tanh')(input_layer)
     layer_2 = tf.keras.layers.Dense(model_neurons[2],
                                     activation='tanh')(layer_1)
     layer_3 = tf.keras.layers.Dense(model_neurons[3])(layer_2)
