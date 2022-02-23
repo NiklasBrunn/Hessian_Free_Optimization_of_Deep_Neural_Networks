@@ -7,4 +7,4 @@ and the Hessian_free_simple.py where we implemented the method for an self gener
 
 Also, for our benchmarks we used the two files model.py and train_steps.py where we implemented the Hessian-Free method using list comprehension for some extra computation speed.
 
-The file code_graveyard contains old versions of our implementation and other codelines which may be usefull.
+The file code_graveyard contains older versions of our implementation and other codelines which may be usefull.
