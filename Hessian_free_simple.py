@@ -163,8 +163,7 @@ def fast_preconditioned_cg_method(x_batch, y_batch, v, b, min_steps, eps):
         if i >= k:
             s = 1 - phi_history[-k] / phi_history[-1]
 
-        denom = (phi_history[-1] - 0.5 * lam * tf.math.reduce_sum(v * v) +
-               2.0 * tf.math.reduce_sum(v * b))
+        denom = (phi_history[-1] + tf.reduce_sum(v * (2.0 * b - 0.5 * lam * v)))
         i += 1
     #print('CG-iterations for this batch:', i)
     return v, denom
