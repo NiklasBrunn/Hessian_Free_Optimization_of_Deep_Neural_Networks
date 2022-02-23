@@ -11,13 +11,13 @@ data_type = 'mnist'  # Data set. options: 'mnist' , 'sin', 'square'
 model_architecture = [784, 800, 10]  # For 'sin', 'square': [1, 15, 15, 1]
 train_size = 60000
 test_size = 10000
-train_time = 200  # Desired train time in seconds for each method
+train_time = 250  # Desired train time in seconds for each method
 
 GGN = True  # Training with the Hessian Free method. (False: No training.)
 preconditioning = True  # True: PCG-Method, False: Vanilla CG-Method
 min_CG_steps = 3
 eps = 0.0005  # accuracy
-r = 1.05  # Large r can lead to NaN errors. We dont know why.
+r = 1.25  # Large r can sometimes lead to NaN errors. We dont know why.
 batch_size_GGN = 1000  # Batch_size
 
 SGD = True  # Training with the SGD. (False: No training.)
@@ -170,17 +170,16 @@ if SGD == True:
 
 # Plotting the results
 if GGN == True:
-    f, (ax1, ax2) = plt.subplots(2, 1, figsize=(6*1.5, 4*1.5))
+    f, (ax1, ax2) = plt.subplots(2, 1, figsize=(6*1.5, 5*1.5))
     ax1.plot(np.cumsum(time_history_GGN), error_history_GGN, c='navy',
              label='H({}), Batch size: {}'.format(min_CG_steps, batch_size_GGN), lw=1.5, alpha=0.9)
     if data_type == 'mnist':
-        ax1.set_ylim(min(145, np.min(error_history_GGN)-5), 1500)
+        ax1.set_ylim(min(145, np.min(error_history_GGN)-5), 2500)
 
 if GGN == False:
     f, ax1 = plt.subplots(1, 1, figsize=(6*1.5, 3*1.5))
     if data_type == 'mnist':
-        ax1.set_ylim(145, 1500)
-
+        ax1.set_ylim(145, 2500)
 
 if SGD == True:
     ax1.plot(np.cumsum(time_history_SGD), error_history_SGD, c='orange',
@@ -194,8 +193,8 @@ ax1.set_xticklabels(['0.1', '1', '10', '100', '1000', '3000'])
 
 if data_type == 'mnist':
     ax1.axhline(160, c='black', label='Benchmark', lw=2, ls='--')
-    ax1.set_yticks([160, 200, 500, 1000])
-    ax1.set_yticklabels(['160', '200', '500', '1000'])
+    ax1.set_yticks([160, 200, 500, 1000, 2000])
+    ax1.set_yticklabels(['160', '200', '500', '1000', '2000'])
     ax1.set_xlim(1, train_time)
 else:
     ax1.set_yticks([0.001, 0.001, 0.01, 0.1])
@@ -214,9 +213,12 @@ ax1.grid()
 
 if GGN == True:
     ax2.plot(np.cumsum(time_history_GGN), lam_history, c='red', lw=1.5, alpha=0.9)
+    ax2.set_xlabel('Train Time in seconds')
+    ax2.set_xscale("log")
+    ax2.set_xticks([1, 10, 100, 1000, 3000])
+    ax2.set_xticklabels(['1', '10', '100', '1000', '3000'])
     ax2.set_xlim(1, train_time)
     ax2.set_ylabel('$\lambda$')
-    ax2.set_xlabel('Train Time in seconds')
     ax2.grid()
 plt.tight_layout()
 plt.show()
