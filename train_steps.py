@@ -1,14 +1,14 @@
 import numpy as np
 import tensorflow as tf
 
-
+# Model Loss functions
 def model_loss(y_true, y_pred):
     if tf.shape(y_true)[-1] == 784:
         return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_true, y_pred))
     else:
         return tf.reduce_mean(0.5 * (y_true - y_pred) ** 2)
 
-
+# SGD update step
 def train_step_gradient_descent(model, x_batch, y_batch, eta):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model(x_batch)
@@ -20,7 +20,7 @@ def train_step_gradient_descent(model, x_batch, y_batch, eta):
 
     model.set_weights([p - u for (p, u) in zip(model.trainable_variables, update)])
 
-
+# Fast matrix-vector product using BAD and FAD
 def fastmatvec(model, x_batch, y_batch, v, lam):
     with tf.GradientTape() as tape:
         with tf.autodiff.ForwardAccumulator(model.trainable_variables, v) as acc:
@@ -32,13 +32,14 @@ def fastmatvec(model, x_batch, y_batch, v, lam):
     batch_size = tf.cast(tf.shape(y_pred)[0], tf.float32)
     return [arg_1 / batch_size + lam * arg_2 for arg_1, arg_2 in zip(J_tHJv, v)]
 
-
+# Hessian free update step
 def train_step_hessian_free(model, x_batch, y_batch, lam, v, preconditioning, min_CG_steps, eps, r_value):
     with tf.GradientTape(persistent=True) as tape:
         y_pred = model(x_batch)
         loss = model_loss(y_batch, y_pred)
     grad_obj = tape.gradient(loss, model.trainable_variables)
 
+    # CG-Method
     J_tHJv = fastmatvec(model, x_batch, y_batch, v, lam)
     r = [arg_1 - arg_2 for arg_1, arg_2 in zip(grad_obj, J_tHJv)]
     if preconditioning == True:
@@ -71,8 +72,10 @@ def train_step_hessian_free(model, x_batch, y_batch, lam, v, preconditioning, mi
         if i >= j:
             s = 1 - phi_history[-j] / phi_history[-1]
         i += 1
+
     model.set_weights([p - u for (p, u) in zip(model.trainable_variables, v)])
 
+    # Updating lambda
     impr = loss - model_loss(y_batch, model(x_batch))
 
     cor = tf.reduce_sum([tf.reduce_sum((2.0 * arg_1 - 0.5 * lam * arg_2) * arg_2)
