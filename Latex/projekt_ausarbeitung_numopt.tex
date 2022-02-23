@@ -1,28 +1,14 @@
 \documentclass[conference]{IEEEtran}
 \IEEEoverridecommandlockouts
-% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
-\usepackage{cite}
-\usepackage{amsmath,amssymb,amsfonts}
-\usepackage{algorithmic}
-\usepackage{graphicx}
-\usepackage{textcomp}
-\usepackage{xcolor}
-\usepackage{hyperref}
-%\usepackage{algorithm}
-\usepackage{algorithm2e}
-\usepackage{algorithmic}
+\usepackage{amsmath,amssymb,amsfonts,algorithmic,graphicx, textcomp, cite, xcolor, algorithm2e, hyperref}
 \DeclareMathOperator*{\argmin}{arg\,min}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
 		T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
-		\newcounter{mytempeqncnt}
+\newcounter{mytempeqncnt}
 \begin{document}
 	
-	\title{Efficient Hessian-Free Optimization of \\Deep Neural Networks
-		%\\
-		%{\footnotesize \textsuperscript{*}Note: Sub-titles are not captured in Xplore and
-		%should not be used}
-		%\thanks{Identify applicable funding agency here. If none, delete this.}
-	}
+	\title{Efficient Hessian-Free Optimization of \\Deep Neural Networks}
+
 	
 	\author{\IEEEauthorblockN{Niklas Brunn}
 		\IEEEauthorblockA{\textit{Albert Ludwigs University of Freiburg} \\
@@ -137,28 +123,6 @@
 	A pseudocode for the full Hessian-Free algorithm is given in Algorithm 1 (note that we use the positive gradient in the CG method and thus have to adapt the algorithm).
 	
 	\RestyleAlgo{ruled}
-	%\begin{algorithm}
-	%	\SetKwInOut{Input}{Input}
-	%	\SetKwInOut{Output}{Output}
-	%	\SetKw{CG}{\textbf{pre.-CG($x,\:y,\:\Delta\theta_{k},\:J_{f}^{\mathrm{T}}(\theta_{k-1}),\:\lambda$):}}
-	%	\SetKwInOut{LAM}{\textbf{$\lambda$-update($x,\: y,\: \Delta\theta_{k+1},\: \lambda$)}}
-	%	\caption{Hessian-Free pseudocode for (10)}\label{alg:one}
-	%	\KwIn{$D,\:\theta_{0},\:\lambda,\: \text{epochs}$}
-	%\Input{$D,\:\theta_{0},\:\lambda,\: \text{epochs}$}
-	%	$\Delta\theta_{0}\gets 0$\\
-	%	\While{$k< \mathrm{epochs}$}{
-	%		\For{$(x, y)$ in $D$}{
-	%			$J_{f}^{\mathrm{T}}(\theta_{k})\:$(compute with BAD)\\
-	%			\CG{$\Delta\theta_{k+1}$}
-	%			$\theta_{k+1}\gets \theta_{k} + \Delta\theta_{k+1}$\\
-	%			\LAM{$\lambda$}
-	%			$k\gets k+1$
-	%		}	
-	%		$\theta_{0} \gets \theta_{N}$
-	%	}
-	%	\KwOut{$\theta^{\star}$}
-	%\end{algorithm}
-	
 	\begin{algorithm}
 		\SetKwInOut{Input}{Input}
 		\SetKwInOut{Output}{Output}
@@ -172,10 +136,8 @@
 			$\mathbf{shuffle }\ D$\\
 			\For{$\mathrm{Batch}\: B$ $\mathbf{in}$ $D$}{
 				$\mathbf{compute}\: J_{f_{B}}^{\mathrm{T}}(\theta_{k})\:\text{with }\mathbf{BAD}$\\
-				%\CG{$\Delta\theta_{k+1}$}
 				$\Delta\theta_{k+1}\gets \mathbf{PCG}(B,\:\Delta\theta_{k},\:J_{f_{B}}^{\mathrm{T}}(\theta_{k}),\:\lambda)$\\
-				$\theta_{k+1}\gets \theta_{k} - \Delta\theta_{k+1}$\\
-				%\LAM{$\lambda$}    
+				$\theta_{k+1}\gets \theta_{k} - \Delta\theta_{k+1}$\\ 
 				$\lambda\gets \mathbf{\lambda}\text{-}\mathbf{update}(B,\: \Delta\theta_{k+1},\: \lambda)$\\
 				$k\gets k+1$
 			}
@@ -301,7 +263,6 @@
 			$i\gets i+1$\\
 			$\mathbf{compute\: }z_{i}= DG_{f_{B}}\cdot d_{i-1} \text{ with } \mathbf{fast}\text{-} \mathbf{mat.}\text{-} \mathbf{vec.}$\\
 			$\alpha_{i}\gets\tfrac{\langle r_{i-1},\: y_{i-1}\rangle}{\langle d_{i-1},\: z_{i}\rangle}$\\
-			%$z_{i}\gets z_{i}\cdot \alpha_{i}$\\
 			$w_{i}\gets w_{i-1} + \alpha_{i}\cdot z_{i}$\\
 			$v_{i}\gets v_{i-1}+\alpha_{i}\cdot d_{i-1}$\\
 			$r_{i}\gets r_{i-1}-\alpha_{i}\cdot z_{i}$\\
@@ -316,7 +277,7 @@
 		$\Delta\theta_{k+1}\gets v_{i}$\\
 		\KwOut{$\Delta\theta_{k+1},\: \mathrm{denom}$}
 	\end{algorithm}
-		\subsection{Efficient computation of matrix-vector-products}
+	\subsection{Efficient computation of matrix-vector-products}
 	\noindent
 	As mentioned before we use an efficient way to calculate matrix-vector-products in the PCG-iterations. We need to compute this matrix-vector-product once in each PCG-iteration. This idea was first presented in [1] using results from [7].\\ 
 	We consider the product of the DGGN with an arbitrary vector $v$ that we want to compute in an efficient way.
@@ -353,28 +314,7 @@
 	\begin{align}
 	H_{L_{y}\circ\:\phi} = J_{\phi} = J_{\phi}^{\mathrm{T}}.
 	\end{align}
-	%In general if we dont have a matching loss function we get 
-	%\begin{align}
-	%DG_{f_{B}}\:v &= \left(J_{R_{x}}^{\mathrm{T}}\:H_{L_{y}\circ\:\Phi}\:J_{R_{x}} + \lambda\cdot %I^{d\times d}\right)\:v\\
-	%& = J_{R_{x}}^{\mathrm{T}}\:H_{L_{y}\circ\:\Phi}\:J_{R_{x}}\:v + \lambda\cdot I^{d\times d}\:v
-	%\end{align}
-	%and compute the left term of the sum in (42) by again first evaluating the DNN`s output given $x$ with the current parameters and after that evaluate the Jacobi-vector-product 
-	%\begin{align}
-	%u := J_{R _{x}}\:v,
-	%\end{align}
-	%then using FAD after BAD to compute the product 
-	%\begin{align}
-	%w := H_{L_{y}\circ\:\Phi}\:u 
-	%\end{align}
-	%and finally compute 
-	%\begin{align}
-	%J_{R_{x}}^{\mathrm{T}}\:w
-	%\end{align}
-	%using BAD. 
-	
-	
-	
-	
+
 	\subsection{Mini-batches}
 	\noindent
 	If we are facing a large observation data set with $N>>0$, it is common to split the data set into batches $B\subset D$ containing only a few random samples $M<<N$ of the entire data. \\
@@ -405,7 +345,7 @@
 	\noindent
 	The MNIST database consists of grayscale images of handwritten digits from $0$ to $9$, with a resolution of $28\times28$ pixels. We flatten each image to a vector of size $784$ and divide by $255$, which transforms the data to $[0,1]^{784}$.\\ The train data set consists of $60,000$ images. For validation we use the test data set with $10,000$ images.\\ 
 	For our DNN we chose an architecture with one hidden layer with $800$ Neurons and ReLu activation function. The total Number of trainable Parameters is $636,010$.\\
-
+	
 	\noindent
 	For stochastic gradient descent we chose as learning rate $\eta=0.1$ and batch size $N=100$. We also tested $\eta=0.01$, $\eta=0.025$ and $\eta=0.3$ as well as $N=250$. But it achieved worse results. \\
 	The SGD benchmark for this model architecture with cross-entropy loss without data pre-processing, distortion, weight-decay etc. is an error rate of $1.6\%$ on the test data set. [10] 
@@ -432,10 +372,7 @@
 	
 	\subsection{Simple simulated data}
 	...
-
-
-
-
+	
 	
 	\section{Conclusion}
 	...
@@ -455,38 +392,5 @@
 		\bibitem{b5} J. Martens, "New Insights and Perspectives on the Natural Gradient Method", Jurnal of Machine Learning Research 21, arXiv:1412.1193v11, September 19, 2020
 		\bibitem{b6} J. Martens, I. Sutskever, "Training Deep and Recurrent Networks with Hessian-Free Optimization", In: G. Montavon, G.B. Orr, KR. Müller (eds), Neural Networks: Tricks of the Trade. Lecture Notes in Computer Science, vol 7700. Springer, Berlin, Heidelberg, 2012
 		\bibitem{b7} B. A. Pearlmutta, "Fast Exact Multiplication by the Hessian", Neural Computation, June 9, 1993
-
 	\end{thebibliography}
-	
-	%\begin{algorithm}
-	%	\SetKwInOut{Input}{Input}
-	%	\SetKwInOut{Output}{Output}
-	%	\SetKwInOut{CG}{\textbf{pre-CG-result}}
-	%	\SetKwInOut{LAM}{\textbf{$\lambda$-update}}
-	%	\SetKwInOut{FMV}{\textbf{fast-mat-vec-out($B$, $\Delta\theta_{k+1}$, $\lambda$)}}
-	%	\caption{Condition for $\lambda$-updates}\label{alg:three}
-	%	\Input{$\Delta\theta_{k+1}$, $f_{B}(\theta_{k})$ $DG_{f_{B}}(\theta_{k})\:\Delta\theta_{k+1}$}
-	%	$loss_{\mathrm{old}}\gets f_{B}(\theta_{k})$\\
-	%	$loss_{\mathrm{new}}\gets f_{B}(\theta_{k}+\Delta\theta_{k+1})$\\
-	%	$A\:\Delta\theta_{k+1}\gets DG_{f_{B}}(\theta_{k})\:\Delta\theta_{k+1}$\\
-	%	$denom \gets J_{f_{B}}^{\mathrm{T}}\cdot\Delta\theta_{k+1} + \frac{1}{2}\Delta\theta_{k+1}^{\mathrm{T}}A\:\Delta\theta_{k+1}$
-	%	$\rho\gets loss_{\mathrm{old}}\:-\:loss_{\mathrm{new}}\cdot(denom)^{-1}$\\
-	%	\text{}\\
-	%	\If{$\rho<\frac{1}{4}$}{$\lambda\gets \frac{3}{2}\:\lambda$}
-	%	\ElseIf{$\rho>\frac{3}{4}$}{$\lambda\gets \frac{2}{3}\:\lambda$}
-	%	\Output{$\lambda$}
-	%\end{algorithm}
-	
-	%\begin{algorithm}
-	%	\SetKwInOut{Input}{Input}
-	%	\SetKwInOut{Output}{Output}
-	%	\SetKwInOut{CG}{\textbf{pre-CG-result}}
-	%	\SetKwInOut{LAM}{\textbf{$\lambda$-update($B$, $\Delta\theta_{k+1}$, $\lambda$)}}
-	%	\caption{Fast matrix-vector produkts (DGGN multiplied with an arbitrary vector $v$)}\label{alg:four}
-	%	\Input{$B$, $v$, $\lambda$, $\theta_{k}$}
-	%	$G_{f_{B}}(\theta_{k})\:v$ (compute with FAD and BAD)\\
-	%	$DG_{f_{B}}(\theta_{k})\: v \gets G_{f_{B}}\: v + \lambda\cdot I^{d\times d}\:v$\\
-	%	\Output{$DG_{f_{B}}(\theta_{k})\: v$}
-	%\end{algorithm}
-	
 \end{document}
