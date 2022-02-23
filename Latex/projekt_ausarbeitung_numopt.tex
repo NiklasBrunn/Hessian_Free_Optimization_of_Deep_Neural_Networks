@@ -321,7 +321,7 @@ In Algorithm 2 we provide a pseudocode for our implementation of the PCG method,
 \noindent
 If we are facing a large observation data set with $N>>0$, it is common to split the data set into batches $B\subset D$ containing only a few random samples $M<<N$ of the entire data and apply the optimization algorithm to each of the generated batches for each iteration. The partition of $D$ into smaller batches is called a mini-batch szenario, where $M$ denotes the batchsize of the mini-batches. For each mini-batch $B$ the DGGN in (20) becomes
 \begin{align}
-DG_{f_{B}} := \frac{1}{M}\sum_{(x, y)\in B}^{}\left(J_{R_{x}}^{\mathrm{T}}H_{L_{y}\circ\:\phi}J_{R_{x}}\right) + \lambda\cdot I^{d\times d}.
+DG_{f_{B}} := \frac{1}{M}\sum_{(x, y)\in B}^{}\left(J_{R_{x}}^{\mathrm{T}}H_{L_{y}\circ\:\phi}J_{R_{x}}\right) + \lambda\cdot I_{d}.
 \end{align}
 As mentioned in [3], the batch size should be relatively large to capture enough information about the curvature of the OL and for to ensure stability in optimization. 
 
@@ -332,7 +332,7 @@ As mentioned in [3], the batch size should be relatively large to capture enough
 For the implementation of the Hessian-Free optimization method, we will first explain in more detail the previously mentioned tricks for an efficient computation of the matrix-vector-products and specifically explain the usage of pre-implemented commands for FAD and BAD in Tensorflow. Only the recently added Tensorflow-command for FAD made it possible to implement the method in Tensorflow efficiently.
 
 
-\subsection{Efficiant computation of matrix-vector-products}
+\subsection{Efficient computation of matrix-vector-products}
 \noindent
 As mentioned before we use an efficient way to calculate matrix-vector-products in the PCG-iterations. Note that the only time where we need to compute a matrix-vector-product is in each PCG-iteration once and additionally one time for the full PCG-run. This idea was first presented in [8] using results from [7].\\ 
 We now consider the product of the DGGN with an arbitrary vector $v$ that we want to compute in an efficient way.
@@ -349,12 +349,12 @@ H_{L_{y}\circ\:\phi} &= \frac{\partial}{\partial z_{x}}J_{L_{y}\circ\:\phi}^{\ma
 \end{align}
 This identity makes it much easier for us to compute the DGGN, since in this case we do not need to compute the Hessian matrix. In summary, we want to calculate the following matrix-vector-product
 \begin{align}
-DG_{f_{B}}v &=  \left(J_{R_{x}}^{\mathrm{T}}AJ_{\phi}J_{R_{x}} + \lambda\cdot I^{d\times d}\right)v\\
-&= J_{R_{x}}^{\mathrm{T}}AJ_{\phi\:\circ\: R _{x}}v + \lambda\cdot I^{d\times d}v.
+DG_{f_{B}}v &=  \left(J_{R_{x}}^{\mathrm{T}}AJ_{\phi}J_{R_{x}} + \lambda\cdot I_{d}\right)v\\
+&= J_{R_{x}}^{\mathrm{T}}AJ_{\phi\:\circ\: R _{x}}v + \lambda\cdot I_{d}v.
 \end{align}
 Here we can compute the first part of the sum in (41) using Tensorflow's pre-implemented functions for FAD and BAD. By this we mean that we first compute the outputs of the DNN given the current parameters and afterwards evaluate the Jacobian-vector-product 
 \begin{align}
-u := J_{\phi\circ R _{x}}v,
+u := J_{\phi\:\circ\: R _{x}}v,
 \end{align}
 followed by an left multiplication with the matrix $A$ and then compute the product 
 \begin{align}
@@ -362,10 +362,10 @@ J_{R_{x}}^{\mathrm{T}}w
 \end{align}
 using BAD, where $w := A\:u$. Also note that using (39) insted of (38) we get 
 \begin{align}
-DG_{f_{B}}v  = J_{\phi\:\circ\:R _{x}}^{\mathrm{T}}AJ_{R _{x}}v + \lambda\cdot I^{d\times d}v.
+DG_{f_{B}}v  = J_{\phi\:\circ\:R _{x}}^{\mathrm{T}}AJ_{R _{x}}v + \lambda\cdot I_{d}v.
 \end{align}
 In contrast to (41), here we put more of the differentiation task into the backward pass.\\ 
-Note that for both, crossentropy loss with previous softmax function and squared error loss with previous identity function, we get $A = I^{m\times m}$. In this two cases one can simplify equation (38) and (39) to 
+Note that for both, crossentropy loss with previous softmax function and squared error loss with previous identity function, we get $A = I_{m}$. In this two cases one can simplify equation (38) and (39) to 
 \begin{align}
 H_{L_{y}\circ\:\phi} = J_{\phi} = J_{\phi}^{\mathrm{T}}.
 \end{align}
