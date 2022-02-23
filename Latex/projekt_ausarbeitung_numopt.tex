@@ -380,11 +380,14 @@
 
 
 	\section{Conclusion}
-	...
+	\noindent
+	With our implementation of the Hessian-Free method we could numerically varified in the mentioned experiments that the method can compete with SGD and even improves the optimization in terms of epochs and run time (Similar results have already been obtained in [3]).\\
+	It would also be interesting to see how our implementation performs with other network architectures (e.g. convolutional neural networks, (variational) autoencoders), and possibly without the use of matching-loss functions.\\
+	During our work with the Hessian-Free method we noticed that it is often very tricky to implement the method and thus it is reasonable to ask if the demonstrated improvements are worth the effort, since one can achieve a nice performance with modified $1^{\text{st}}$-order optimization methods (e.g. Adam optimization method). On the other hand we are sure that it is still possible to achieve further improvements in performance with the Hessian-Free optimization method and that in general the potential of $2^{\text{nd}}$-order optimization methods has not yet been fully exploited.
 
 	\section*{Acknowledgment}
 	\noindent
-	We want to thank the lecture assistant Florian Messerer for suggesting this topic for the project and giving us some sources to research.
+	We want to thank the lecture assistant Florian Messerer for suggesting this topic for the project and providing us some sources to research.
 
 	%	\bibitem{b1} M. Abadi, A. Agarwal, P. Barham, E. Brevdo,
 	%Z. Chen, C. Citro, G. S. Corrado, A. Davis,
