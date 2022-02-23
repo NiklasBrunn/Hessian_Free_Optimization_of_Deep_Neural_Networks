@@ -7,28 +7,27 @@ from keras.datasets import mnist
 from train_steps import train_step_hessian_free, train_step_gradient_descent, model_loss
 
 
-data_type = 'mnist'
-model_architecture = [784, 800, 10]  # [1, 25, 25, 1]
+data_type = 'mnist'  # Data set. options: 'mnist' , 'sin', 'square'
+model_architecture = [784, 800, 10]  # For 'sin', 'square': [1, 15, 15, 1]
 train_size = 60000
 test_size = 10000
-train_time = 200
+train_time = 200  # Desired train time in seconds for each method
 
-GGN = True
-preconditioning = True
+GGN = True  # Training with the Hessian Free method. (False: No training.)
+preconditioning = True  # True: PCG-Method, False: Vanilla CG-Method
 min_CG_steps = 3
-eps = 0.0005
-r = 1.5
-batch_size_GGN = 1000
-num_updates_GGN = int(train_size / batch_size_GGN)
+eps = 0.0005  # accuracy
+r = 1.05  # Large r can lead to NaN errors. We dont know why.
+batch_size_GGN = 1000  # Batch_size
 
-SGD = True
-eta = 0.1
-batch_size_SGD = 100
-num_updates_SGD = int(train_size / batch_size_SGD)
-
-tf.random.set_seed(13)
+SGD = True  # Training with the SGD. (False: No training.)
+eta = 0.1  # Learning rate
+batch_size_SGD = 100  # Batch size
 
 
+tf.random.set_seed(1234)
+
+# For generating the data sets
 def data_generator(train_size, test_size):
     if data_type == 'mnist':
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -49,8 +48,10 @@ def data_generator(train_size, test_size):
     return x_train, y_train, x_test, y_test
 
 
+# Defining the data sets
 x_train, y_train, x_test, y_test = data_generator(train_size, test_size)
 
+# Defining the SGD and GNN dense models according to the given model_architecture
 models = []
 for i in range(GGN+SGD):
     input_layer = tf.keras.Input(shape=model_architecture[0])
@@ -64,7 +65,7 @@ for i in range(GGN+SGD):
 
     models.append(tf.keras.Model(input_layer, output_layer))
 
-
+# Metrics for evaluation during training
 def metric(model, data, label):
     if data_type == 'mnist':
         error = tf.reduce_sum(tf.where(tf.argmax(label, axis=1) -
@@ -73,7 +74,7 @@ def metric(model, data, label):
         error = model_loss(label, model(data))
     return np.array(error)
 
-
+# Shuffeling the dataset and computing loss on train and test dataset at the begin of every epoch
 def shuffle_and_evaluate(opt, x_train, y_train):
     perm = np.random.permutation(train_size)
     x_train = np.take(x_train, perm, axis=0)
@@ -97,11 +98,13 @@ def shuffle_and_evaluate(opt, x_train, y_train):
     return x_train, y_train, error_test
 
 
+# Training with the Hessian Free method.
 if GGN == True:
     model_GGN = models[0]
     model_GGN.compile(loss=model_loss)
     model_GGN.summary()
 
+    num_updates_GGN = int(train_size / batch_size_GGN)
     error_history_GGN = [metric(model_GGN, x_test,  y_test)]
     time_history_GGN = [0.]
     lam = 1.
@@ -132,12 +135,13 @@ if GGN == True:
             error_history_GGN = np.append(error_history_GGN, error_new)
         epoch += 1
 
-
+# Training with the SGD.
 if SGD == True:
     model_SGD = models[-1]
     model_SGD.compile(loss=model_loss)
     model_SGD.summary()
 
+    num_updates_SGD = int(train_size / batch_size_SGD)
     error_history_SGD = [metric(model_SGD, x_test,  y_test)]
     time_history_SGD = [0.]
     epoch = 1
@@ -163,6 +167,8 @@ if SGD == True:
             error_history_SGD = np.append(error_history_SGD, error_new)
         epoch += 1
 
+
+# Plotting the results
 if GGN == True:
     f, (ax1, ax2) = plt.subplots(2, 1, figsize=(6*1.5, 4*1.5))
     ax1.plot(np.cumsum(time_history_GGN), error_history_GGN, c='navy',
@@ -181,7 +187,6 @@ if SGD == True:
              label='SGD({}), Batch size: {}'.format(eta, batch_size_SGD), lw=1.5, alpha=0.9)
 
 ax1.legend(loc='upper right', fancybox=False, edgecolor='black', framealpha=1)
-
 ax1.set_yscale("log")
 ax1.set_xscale("log")
 ax1.set_xticks([0.1, 1, 10, 100, 1000, 3000])
@@ -203,7 +208,6 @@ else:
         ax1.set_ylim(np.min(error_history_GGN)*0.9, 0.2)
     ax1.set_xlim(0.5, train_time)
 
-
 ax1.set_ylabel('Total Error on Test Dataset')
 ax1.set_xlabel('Train Time in seconds')
 ax1.grid()
@@ -218,8 +222,6 @@ plt.tight_layout()
 plt.show()
 
 f, ax = plt.subplots(1, 1, figsize=(6*1.5, 3*1.5))
-
-
 a = np.linspace(-6, 6, 250)
 x1 = model_SGD.predict(a)
 x2 = model_GGN.predict(a)
