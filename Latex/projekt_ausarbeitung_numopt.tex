@@ -289,7 +289,7 @@ In Algorithm 2 we provide a pseudocode for our implementation of the PCG method,
 	\KwIn{$B,\:\Delta\theta_{k},\:J_{f_{B}}^{\mathrm{T}}(\theta_{k}),\:\lambda$}
 	$i, k, s\gets 0,\:t,\:t$\\
 	$u_{0}\gets \Delta\theta_{k}$\\
-	$\mathbf{compute\: }w_{0}= DG_{f_{B}}\cdot \Delta\theta_{k} \text{ with } \mathbf{fast}\text{-} \mathbf{mat.}\text{-} \mathbf{vec.}$\\
+	$\mathbf{compute\: }w_{0}= DG_{f_{B}}\cdot u_{0} \text{ with } \mathbf{fast}\text{-} \mathbf{mat.}\text{-} \mathbf{vec.}$\\
 	$r_{0}\gets J_{f_{B}}^{\mathrm{T}}- w_{0}$\\
 	$M\gets \mathbf{preconditioner\:matrix} \text{ [4]}$\\
 	$y_{0}\gets M^{-1}r_{0}$\\
