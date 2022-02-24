@@ -36,14 +36,14 @@
 	\begin{abstract}
 		\noindent
 		This report is a written elaboration of a project which was developed in the lecture Numerical Optimization in the winter term 21/22 at the Albert Ludwigs University of Freiburg.\\
-		We discuss a $2^{\text{nd}}$-order optimization method for training deep neural networks using the generalised Gauss-Newton Matrix as an approximation of the Hessian of the objective loss function. In addition we present an implementation of the method using Python3, Tensorflow and compare the results to a $1^{\text{st}}$-order optimization method on the MNIST dataset.
+		We discuss a $2^{\text{nd}}$-order optimization method for training deep neural networks using the generalised Gauss-Newton matrix as an approximation of the Hessian of the objective loss function. In addition we present an implementation of the method using Python3, Tensorflow and compare the results to a $1^{\text{st}}$-order optimization method on the MNIST dataset and some simple simulated data set.
 	\end{abstract}
 
 	\section{Introduction}
 	\noindent
 	Deep neural networks (DNNs) are an important deep learning architecture and have a wide field of applications. When training a DNN, the network parameters are updated according to certain rules, which we call the DNN optimization method. Here stochastic gradient descent (SGD) is often used as such an optimization method. SGD is a $1^{\text{st}}$-order optimization method in which only the negative gradient of the objective loss function (OL) with respect to the network parameters is used to update the current parameters. One problem of SGD is that pathological curvature of the OL is not being considered. This means that the method can get stuck in saddle points, or often converges very slowly in enviroments with pathological curvature.\\
 	On the other hand $2^{\text{nd}}$-order optimization methods take the curvature of the OL into account and can thus circumvent such problems. However, they are often costly in time because $2^{\text{nd}}$-order derivatives must be computed for this purpose.\\
-	Our aim is to use a version of Newton's method for DNN optimization as presented in [4]. We use an approximation of the Hessian matrix, which is positive definite, and thus allows the use of a preconditioned version of the conjugate gradient (PCG) method for updating the network parameters. Therefore we discuss the individual problems of standard Newton updates and the improvements proposed for them in order to ensure computational efficiency. Our own implementation can be accessed on \href{https://github.com/NiklasBrunn/Hessian_Free_Optimization_of_Deep_Neural_Networks}{GitHub} .\\
+	Our aim is to use a version of Newton's method for DNN optimization as presented in [4]. We use an approximation of the Hessian matrix, which is positive definite, and thus allows the use of a preconditioned version of the conjugate gradient method (PCG) for updating the network parameters. Therefore we discuss the individual problems of standard Newton updates and the improvements proposed for them in order to ensure computational efficiency. Our own implementation can be accessed on \href{https://github.com/NiklasBrunn/Hessian_Free_Optimization_of_Deep_Neural_Networks}{GitHub} .\\
 	Finally we train a DNN on the MNIST-dataset with SGD and the here presented $2^{\text{nd}}$-order optimization method and discuss our results.
 
 
@@ -59,7 +59,8 @@
 	&R_{x}:\Theta^{d}\rightarrow\mathbb{R}^{m}, \notag\\
 	&\theta\mapsto R_{x}(\theta) =: z_{x}.
 	\end{align}
-	Here $\theta$ is a vector containing the parameters of our DNN and $z_{x}$ is defined as the DNN's output vector. The parameter space is denoted by $\Theta^{d} := \mathbb{R}^{d}$ with usually $d>>0$. More precisely the realisation is an alternating composition of a fixed number of affine and nonlinear mappings with respect to its input $x$. The parameter vector is the collection of every entry from all weight matrices and bias vectors in the affine mappings. These affine mappings are called layers and the nonlinear mappings are called activation functions. Activation functions $\varrho:\mathbb{R}\rightarrow\mathbb{R}$ are one-dimensional, nonlinear, real-valued and piecewise differentiable functions which are applied element-wise to the activation of the preceding layer. Usually the same activation function is applied to all hidden layers of the DNN. We assume that an additional nonlinear function $\phi:\mathbb{R}^{m}\rightarrow\mathbb{R}^{m}$ is applied to the DNN's output which is not directly considered as a component of the DNN's architecture. This allows us to use technical tricks that later favor the implementation. We denote the nonlinear evaluation of the network output by
+	Here $\theta$ is a vector containing the parameters of our DNN and $z_{x}$ is defined as the DNN's output vector. The parameter space is denoted by $\Theta^{d} := \mathbb{R}^{d}$ with usually $d>>0$. More precisely the realisation is an alternating composition of a fixed number of affine and nonlinear mappings with respect to its input $x$. The parameter vector is the collection of every entry from all weight matrices and bias vectors in the affine mappings. These affine mappings are called layers and the nonlinear mappings are called activation functions.\\
+	Activation functions $\varrho:\mathbb{R}\rightarrow\mathbb{R}$ are one-dimensional, nonlinear, real-valued and (piecewise) differentiable functions which are applied element-wise to the activation of the preceding layer. Usually the same activation function is applied to all hidden layers of the DNN. We assume that an additional nonlinear function $\phi:\mathbb{R}^{m}\rightarrow\mathbb{R}^{m}$ is applied to the network output which is not directly considered as a component of the DNN's architecture. This allows us to use technical tricks that later favor the implementation. We denote the nonlinear evaluation of the network output by
 	\begin{align}
 	\hat{y}_{x} := \phi(z_{x}),
 	\end{align}
@@ -78,7 +79,7 @@
 	&L_{y}:\mathbb{R}^{m}\rightarrow \mathbb{R}^{+}, \notag\\
 	&\hat{y}\mapsto L_{y}(\hat{y}) := L(\hat{y}, y),
 	\end{align}
-	which is assumed to be at least twice continous differentiable in $\hat{y}$. For a fixed observation pair $(x, y)$ with current parameters $\theta$, the output loss takes $\hat{y}_{x} = \phi(R_{x}(\theta))$ as input. A typicall choice for the loss function $L$ and the previous nonlinear function $\psi$ in multi-classification tasks is crossentropy loss with softmax function and squared error loss with identity function for regression tasks.
+	which is assumed to be at least twice continous differentiable in $\hat{y}$. For a fixed observation pair $(x, y)$ with current parameters $\theta$, the output loss takes $\hat{y}_{x} = \phi(R_{x}(\theta))$ as input. A typicall choice for the loss function $L$ and the previous nonlinear function $\phi$ in multi-classification tasks is crossentropy loss with softmax function and squared error loss with identity function for regression tasks.
 
 
 
@@ -278,7 +279,7 @@
 		\KwOut{$\Delta\theta_{k+1},\: \mathrm{denom}$}
 	\end{algorithm}
 
-	
+
 	\subsection{Efficient computation of matrix-vector-products}
 	\noindent
 	As mentioned before we use an efficient way to calculate matrix-vector-products in the PCG-iterations. We need to compute this matrix-vector-product once in each PCG-iteration. This idea was first presented in [8] using results from [7].\\
