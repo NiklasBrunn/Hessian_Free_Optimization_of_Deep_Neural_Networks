@@ -76,7 +76,7 @@
 	&L_{y}:\mathbb{R}^{m}\rightarrow \mathbb{R}^{+}, \notag\\
 	&\hat{y}\mapsto L_{y}(\hat{y}) := L(\hat{y}, y),
 	\end{align}
-	which is assumed to be at least twice continous differentiable in $\hat{y}$. For a fixed observation pair $(x, y)$ with current parameters $\theta$, the output loss takes $\hat{y}_{x} = \phi(R_{x}(\theta))$ as input. A typicall choice for the loss function $L$ and the previous nonlinear function $\psi$ in multi-classification tasks is crossentropy loss with a preceding softmax function and squared error loss with identity function for regression tasks.
+	which is assumed to be at least twice continous differentiable in $\hat{y}$. For a fixed observation pair $(x, y)$ with current parameters $\theta$, the output loss takes $\hat{y}_{x} = \phi(R_{x}(\theta))$ as input. A typical choice for the loss function $L$ and the previous nonlinear function $\psi$ in multi-classification tasks is crossentropy loss with a preceding softmax function and squared error loss with identity function for regression tasks.
 	
 	
 	
@@ -112,7 +112,7 @@
 	\left(\frac{\partial}{\partial\hat{y}_{x}}\left(L_{y}\circ \phi\right)(\hat{y}_{x})\right)^{\mathrm{T}}= J_{L_{y}\circ \:\phi}^{\mathrm{T}} = A z_{x} + b,
 	\end{align}
 	for a matrix $A$ and a vector $b$, which both do not depend on the network parameters $\theta$.\\
-	Note that crossentropy loss matches the softmax function and squared error loss matches the identity function.
+	Note that cross-entropy loss matches the softmax function and squared error loss matches the identity function.
 	
 	
 	\section{Hessian-Free optimization method}
@@ -306,7 +306,7 @@
 	DG_{f}v  = J_{\phi\:\circ\:R _{x}}^{\mathrm{T}}AJ_{R _{x}}v + \lambda\cdot I_{d}v.
 	\end{align}
 	In contrast to (34), more of the differentiation task is put into the backward pass.\\
-	Note that for both, crossentropy loss with previous softmax function and squared error loss with previous identity function, we get $A = I_{m}$. In these two cases one can simplify equation (31) and (32) to
+	Note that for both, cross-entropy loss with previous softmax function and squared error loss with previous identity function, we get $A = I_{m}$. In these two cases one can simplify equation (31) and (32) to
 	\begin{align}
 	H_{L_{y}\circ\:\phi} = J_{\phi} = J_{\phi}^{\mathrm{T}}.
 	\end{align}
@@ -371,7 +371,7 @@
 	
 	\begin{figure}[htbp]
 		\centerline{\includegraphics[scale=0.53]{Precond.png}}
-		\caption{Comparison of the PCG-method and the CG-method. Without Preconditioning convergence is slower. (Tested with $M_{\mathrm{HF}}=100$)}
+		\caption{Comparison of the PCG-method and the CG-method. Without preconditioning convergence is slower. (Tested with $M_{\mathrm{HF}}=100$)}
 		\label{fig4}
 	\end{figure}
 	
@@ -382,7 +382,7 @@
 	With our implementation of the Hessian-Free method we could compete with, and sometimes even beat, SGD in terms of run time and performance.
 	During our work on the project we found it very tricky and time consuming to implement the Hessian-Free method.\\
 	It would also be interesting to see how our implementation performs with other network architectures or models (e.g. convolutional neural networks, (variational) autoencoders), and possibly without the use of matching-loss functions.\\
-	Considering that one can achieve good performances with modified $1^{\text{st}}$-order optimization methods (e.g. ADAM) it remains to be seen wether $2^{\text{nd}}$-order optimization methods can gain a foothold within standard network training methods. On the other hand it could be possible to achieve further improvements in performance with the Hessian-Free optimization method and that the potential of $2^{\text{nd}}$-order optimization methods has not yet been fully uncovered.
+	Considering that one can achieve good performances with modified $1^{\text{st}}$-order optimization methods (e.g. ADAM) it remains to be seen whether $2^{\text{nd}}$-order optimization methods can gain a foothold within standard network training methods. On the other hand it could be possible to achieve further improvements in performance with the Hessian-Free optimization method and that the potential of $2^{\text{nd}}$-order optimization methods has not yet been fully uncovered.
 	
 	\section*{Acknowledgment}
 	\noindent
