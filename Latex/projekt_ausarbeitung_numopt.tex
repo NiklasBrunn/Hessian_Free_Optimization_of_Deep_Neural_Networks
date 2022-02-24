@@ -95,7 +95,7 @@
 	\argmin_{\theta\in\Theta^{d}}\quad f_{D}(\theta),
 	\end{align}
 	where $\theta$ denotes the decision variable and $f_{D}$ the objective function of the NLP.
-	Further, if we consider only one observation $(x, y)$ from the observation data set $D$, we simply write  $f$ for the corresponding OL. Note that the NLP formulated above is typically nonconvex due to the nonconvexity of the OL.
+	Further, if we consider only one observation $(x, y)$ from the observation data set $D$, we simply write  $f$ for the corresponding OL. Note that the NLP formulated above is typically nonconvex due to nonconvexity of the OL.
 
 	\subsection{Matching loss functions}
 	\noindent
@@ -112,7 +112,7 @@
 	\end{align}
 	As introduced in [8], we also make use of so-called matching loss functions. An output loss function $L_{y}$ matches the output nonlinearity $\phi$ iff
 	\begin{align}
-	\left(\frac{\partial}{\partial\hat{y}_{x}}\left(L_{y}\circ \phi\right)(\hat{y}_{x})\right)^{\mathrm{T}}= J_{L_{y}\circ \:\phi}^{\mathrm{T}} = A z_{x} + b,
+	\left(\frac{\partial}{\partial\hat{y}_{x}}\left(L_{y}\circ \phi\right)(\hat{y}_{x})\right)^{\mathrm{T}}= J_{L_{y}\circ \:\phi}^{\mathrm{T}} = A \hat{y}_{x} + b,
 	\end{align}
 	for a matrix $A$ and a vector $b$, which both do not depend on the network parameters $\theta$.\\
 	Note that crossentropy loss matches the softmax function and squared error loss matches the identity function.
@@ -137,9 +137,9 @@
 			$\mathbf{shuffle }\ D$\\
 			\For{$\mathrm{Batch}\: B$ $\mathbf{in}$ $D$}{
 				$\mathbf{compute}\: J_{f_{B}}^{\mathrm{T}}(\theta_{k})\:\text{with }\mathbf{BAD}$\\
-				$\Delta\theta_{k+1}\gets \mathbf{PCG}(B,\:\Delta\theta_{k},\:J_{f_{B}}^{\mathrm{T}}(\theta_{k}),\:\lambda)$\\
+				$\Delta\theta_{k+1},\:\mathrm{denom}\gets \mathbf{PCG}(B,\:\Delta\theta_{k},\:J_{f_{B}}^{\mathrm{T}}(\theta_{k}),\:\lambda)$\\
 				$\theta_{k+1}\gets \theta_{k} - \Delta\theta_{k+1}$\\
-				$\lambda\gets \mathbf{\lambda}\text{-}\mathbf{update}(B,\: \Delta\theta_{k+1},\: \lambda)$\\
+				$\lambda\gets \mathbf{\lambda}\text{-}\mathbf{update}(B,\: \Delta\theta_{k+1},\: \lambda,\:\mathrm{denom})$\\
 				$k\gets k+1$
 			}
 			$e\gets e+1$
@@ -195,7 +195,7 @@
 	\begin{align}
 	DG_{f} := G_{f} + \lambda\cdot I_{d},
 	\end{align}
-	with $I_{d}$ denoting the $d\times d$ unit matrix and some $\lambda>0$.
+	with $I_{d}$ denoting the $d\times d$ unit matrix and some damping value $\lambda>0$.
 	The DGGN constructed this way is always positive definite.
 	To see this, we consider the decomposition
 	\begin{align}
@@ -207,7 +207,7 @@
 	&= U\Lambda U^{\mathrm{T}} + \lambda\cdot U I_{d}U^{\mathrm{T}}\\
 	&= U\left(\Lambda + \lambda\cdot I_{d}\right)U^{\mathrm{T}},
 	\end{align}
-	where the Matrix $\left(\Lambda + \lambda\cdot I_{d}\right)$ is a diagonal one containing only positive entries, the eigenvalues, on the diagonal. Due to symmetry and because of the fact that the DGGN has only positive eigenvalues it holds that this matrix is positive definite and invertible.\\
+	where the Matrix $\left(\Lambda + \lambda\cdot I_{d}\right)$ in (24) is a diagonal one containing only positive entries, the eigenvalues of the DGGN, on the diagonal. Due to symmetry and because of the fact that the DGGN has only positive eigenvalues it holds that this matrix is positive definite and invertible.\\
 	Note that a choice of $\lambda>>0$ leads to a Newton step where the change of our parameters is marginal. On the other hand $\lambda\approx 0$ leads to a full step using the GGN. In practice, we update the damping value $\lambda$ after each iteration. For this reason, the damping parameter can be seen as a self-adapting learning rate for the optimization method.\\
 	Following [4] we define the reduction ratio
 	\begin{align}
@@ -342,7 +342,7 @@
 
 	\subsection{Simple simulated sin-data}
 	\noindent
-	We generate $2000$ random samples of sin-values with some rendom noise, $x_{i}\sim\mathcal{N}(0, 1)$, $y_{i}=\sin(x_{i})+0.1\cdot\beta_{i}$ with  $\beta_{i}\sim\mathcal{N}(0,1)$. For the network architecture we use two hidden layers with $15$ neurons each and ReLu activation function resulting in a total number of parameters $d=286$. For the output loss we choose the squared error loss with previous identity function.We set the batchsize for both SGD and Hessian-Free to $M_{\mathrm{SGD}}=100$ and $M_{\mathrm{HF}}=1000$.\\
+	We generate $2000$ random samples of sin-values with some random noise, $x_{i}\sim\mathcal{N}(0, 1)$, $y_{i}=\sin(x_{i})+0.1\cdot\beta_{i}$ with  $\beta_{i}\sim\mathcal{N}(0,1)$. For the network architecture we use two hidden layers with $15$ neurons each and ReLu activation function resulting in a total number of parameters $d=286$. For this regression task we choose squared error loss and the identity function for the output loss and the previous nonlinear function. We set the batchsize for SGD to $M_{\mathrm{SGD}}=100$ and for the Hessian-Free method to $M_{\mathrm{HF}}=1000$.\\
 	We tested several values for the SGD-learning rate. At the end we could determine that our implementation of the Hessian-Free method does not only converge in in fewer epochs but also can compete with SGD in computation time (see Fig. 2 for a representative result).
 
 
