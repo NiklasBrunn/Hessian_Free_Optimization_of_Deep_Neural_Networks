@@ -2,8 +2,8 @@ import numpy as np
 import tensorflow as tf
 
 # Model Loss functions
-def model_loss(y_true, y_pred):
-    if tf.shape(y_true)[-1] == 784:
+def model_loss(data, y_true, y_pred):
+    if tf.shape(y_true)[-1] == 10:
         return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_true, y_pred))
     else:
         return tf.reduce_mean(0.5 * (y_true - y_pred) ** 2)
