@@ -1,9 +1,7 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import tensorflow as tf
+import matplotlib.pyplot as plt
 import time
-from keras.datasets import mnist
 from train_steps import train_step_hessian_free, train_step_gradient_descent, model_loss
 
 
@@ -11,13 +9,13 @@ data_type = 'mnist'  # Data set. options: 'mnist' , 'sin', 'square'
 model_architecture = [784, 800, 10]  # For 'sin', 'square': [1, 15, 15, 1]
 train_size = 60000
 test_size = 10000
-train_time = 250  # Desired train time in seconds for each method
+train_time = 300  # Desired train time in seconds for each method
 
 GGN = True  # Training with the Hessian Free method. (False: No training.)
 preconditioning = True  # True: PCG-Method, False: Vanilla CG-Method
 min_CG_steps = 3
 eps = 0.0005  # accuracy
-r = 1.25  # Large r can sometimes lead to NaN errors. 
+r = 1.5  # Large r can sometimes lead to NaN errors. We dont know why.
 batch_size_GGN = 1000  # Batch_size
 
 SGD = True  # Training with the SGD. (False: No training.)
@@ -30,7 +28,7 @@ tf.random.set_seed(1234)
 # For generating the data sets
 def data_generator(train_size, test_size):
     if data_type == 'mnist':
-        (x_train, y_train), (x_test, y_test) = mnist.load_data()
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
         x_train = tf.reshape(x_train[:train_size], [train_size, 784])/255
         x_test = tf.reshape(x_test[:test_size], [test_size, 784])/255
         y_train = tf.one_hot(y_train[:train_size], depth=10)
@@ -135,7 +133,7 @@ if GGN == True:
             error_history_GGN = np.append(error_history_GGN, error_new)
         epoch += 1
 
-# Training with the SGD.
+# Training with SGD.
 if SGD == True:
     model_SGD = models[-1]
     model_SGD.compile(loss=model_loss)
@@ -161,7 +159,7 @@ if SGD == True:
             if i == 0:
                 error_new = error_test
 
-            elif i > 0 and i % min(epoch, max(int(num_updates_GGN/4), 1)) == 0:
+            elif i > 0 and i % min(epoch, max(int(num_updates_SGD/4), 1)) == 0:
                 error_new = metric(model_SGD, x_test, y_test)
 
             error_history_SGD = np.append(error_history_SGD, error_new)
@@ -193,8 +191,8 @@ ax1.set_xticklabels(['0.1', '1', '10', '100', '1000', '3000'])
 
 if data_type == 'mnist':
     ax1.axhline(160, c='black', label='Benchmark', lw=2, ls='--')
-    ax1.set_yticks([160, 200, 500, 1000, 2000])
-    ax1.set_yticklabels(['160', '200', '500', '1000', '2000'])
+    ax1.set_yticks([160, 200, 500, 1000])
+    ax1.set_yticklabels(['160', '200', '500', '1000'])
     ax1.set_xlim(1, train_time)
 else:
     ax1.set_yticks([0.001, 0.001, 0.01, 0.1])
@@ -221,14 +219,4 @@ if GGN == True:
     ax2.set_ylabel('$\lambda$')
     ax2.grid()
 plt.tight_layout()
-plt.show()
-
-f, ax = plt.subplots(1, 1, figsize=(6*1.5, 3*1.5))
-a = np.linspace(-6, 6, 250)
-x1 = model_SGD.predict(a)
-x2 = model_GGN.predict(a)
-ax.scatter(x_train, y_train, c='green', s=0.08)
-ax.plot(a, x1, c='red', lw=1.5)
-ax.plot(a, x2, c='blue', lw=1.5)
-ax.grid()
 plt.show()
