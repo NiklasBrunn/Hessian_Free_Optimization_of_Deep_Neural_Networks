@@ -17,7 +17,7 @@ GGN = True  # Training with the Hessian Free method. (False: No training.)
 preconditioning = True  # True: PCG-Method, False: Vanilla CG-Method
 min_CG_steps = 3
 eps = 0.0005  # accuracy
-r = 1.25  # Large r can sometimes lead to NaN errors. We dont know why.
+r = 1.25  # Large r can sometimes lead to NaN errors. 
 batch_size_GGN = 1000  # Batch_size
 
 SGD = True  # Training with the SGD. (False: No training.)
