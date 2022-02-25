@@ -336,7 +336,7 @@
 	\subsection{Simple Simulated Sinus Data}
 	\noindent
 	We generate $2000$ random samples of sinus function values with some noise, $x_{i}\sim\mathcal{N}(0, 1)$, $y_{i}=\sin(x_{i})+0.1\cdot\beta_{i}$ with  $\beta_{i}\sim\mathcal{N}(0,1)$. For the network architecture we use two hidden layers with $15$ neurons each and ReLu activation function resulting in a total number of parameters $d=286$. For the output loss we choose the squared error loss with previous identity function. We set the batch size for SGD and the Hessian-free optimizer to $M_{\mathrm{SGD}}=100$ and $M_{\mathrm{HF}}=1000$.\\
-	We tested several values for the SGD-learning rate. At the end we could determine that our implementation of the Hessian-free method does not only converge in fewer epochs but also can compete with SGD in computation time (see Fig. 2 for a representative result).
+	We tested several values for the SGD learning rate. At the end we could determine that our implementation of the Hessian-free method does not only converge in fewer epochs but also can compete with SGD in computation time (see Fig. 2 for a representative result).
 
 
 	\begin{figure*}[tb]
