@@ -5,6 +5,6 @@ We provide code in Python3, Tensorflow, for optimizing DNNs with a second-order 
 Our Repository consists of two main files, the Hessian_free_MNIST.py where we implemented the method for the MNIST data set, 
 and the Hessian_free_simple.py where we implemented the method for an self generated sin-data set (and also a very simple x^2-data set). The two main files are commented versions of our implementation. 
 
-Also, for our benchmarks we used the two files model.py and train_steps.py where we implemented the Hessian-Free method using list comprehension for some extra computation speed.
+Also, for our benchmarks we used the two files model.py and train_steps.py where we implemented the Hessian-free method using list comprehension for some extra computation speed.
 
 The file code_graveyard contains older versions of our implementation and other codelines which may be usefull.
